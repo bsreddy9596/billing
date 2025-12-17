@@ -1,0 +1,398 @@
+openapi: 3.0.0
+info:
+  title: FurniturePro API
+  version: 1.0.0
+  description: Professional API documentation for Furniture Billing & Production Management System
+
+servers:
+  - url: http://localhost:5000
+    description: Local Development Server
+
+tags:
+  - name: Auth
+    description: Admin & Employee Authentication APIs
+  - name: Employees
+    description: Employee management for admin
+  - name: Orders
+    description: Customer orders and production workflow
+  - name: Materials
+    description: Raw materials management
+  - name: Products
+    description: Furniture product stock and production
+  - name: Sales
+    description: Showroom billing APIs
+  - name: Billing
+    description: Customer bill and ledger management
+  - name: Invoices
+    description: Invoice and payment tracking
+  - name: Analytics
+    description: Business performance & dashboard
+  - name: Notifications
+    description: System notifications and activity logs
+  - name: Settings
+    description: System defaults and configuration
+
+paths:
+  # ---------------- AUTH -----------------
+  /api/auth/admin/login:
+    post:
+      tags: [Auth]
+      summary: Admin login using phone and password
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                phone: { type: string, example: "9999999999" }
+                password: { type: string, example: "admin123" }
+      responses:
+        "200": { description: Login successful }
+
+  /api/auth/employee/login:
+    post:
+      tags: [Auth]
+      summary: Employee login using code and password
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                employeeCode: { type: string, example: "EMP12345" }
+                password: { type: string, example: "test123" }
+      responses:
+        "200": { description: Employee login successful }
+
+  /api/auth/employee/add:
+    post:
+      tags: [Employees]
+      summary: Add new employee (Admin only)
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name: { type: string }
+                phone: { type: string }
+                password: { type: string }
+      responses:
+        "201": { description: Employee created }
+
+  /api/auth/employees:
+    get:
+      tags: [Employees]
+      summary: Get all employees (Admin only)
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200": { description: List of employees }
+
+  /api/auth/employee/{id}:
+    delete:
+      tags: [Employees]
+      summary: Delete employee (Admin only)
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string }
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200": { description: Employee deleted }
+
+  /api/auth/employee/reset-password:
+    post:
+      tags: [Auth]
+      summary: Employee reset password (self)
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                newPassword: { type: string, example: "newpass123" }
+      responses:
+        "200": { description: Password reset successful }
+
+  # ---------------- ORDERS -----------------
+  /api/orders:
+    post:
+      tags: [Orders]
+      summary: Create new order (Employee/Admin)
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Order"
+      responses:
+        "201": { description: Order created }
+    get:
+      tags: [Orders]
+      summary: Get all orders (Admin)
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200": { description: List of orders }
+
+  /api/orders/{id}/confirm:
+    put:
+      tags: [Orders]
+      summary: Confirm order (Admin)
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string }
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200": { description: Order confirmed }
+
+  /api/orders/{id}/status:
+    put:
+      tags: [Orders]
+      summary: Update order status (Employee/Admin)
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                status: { type: string, example: "ready_for_delivery" }
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200": { description: Status updated }
+
+  # ---------------- MATERIALS -----------------
+  /api/materials:
+    get:
+      tags: [Materials]
+      summary: Get all materials
+      security: [{ bearerAuth: [] }]
+      responses: { "200": { description: List of materials } }
+    post:
+      tags: [Materials]
+      summary: Add new material (Admin)
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Material"
+      responses:
+        "201": { description: Material created }
+
+  /api/materials/{id}/add-stock:
+    put:
+      tags: [Materials]
+      summary: Add material stock (Admin/Employee)
+      parameters:
+        - in: path
+          name: id
+          schema: { type: string }
+          required: true
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                qty: { type: number, example: 10 }
+      responses:
+        "200": { description: Stock updated }
+
+  # ---------------- PRODUCTS -----------------
+  /api/products:
+    get:
+      tags: [Products]
+      summary: Get all products
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200": { description: OK }
+    post:
+      tags: [Products]
+      summary: Create or produce product (Admin)
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Product"
+      responses:
+        "201": { description: Created }
+
+  /api/products/{id}/produce:
+    put:
+      tags: [Products]
+      summary: Produce more stock (Admin)
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                qty: { type: number, example: 5 }
+      responses:
+        "200": { description: Product restocked }
+
+  # ---------------- SALES -----------------
+  /api/sales:
+    post:
+      tags: [Sales]
+      summary: Create sale (Admin/Employee)
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Sale"
+      responses:
+        "201": { description: Sale created }
+    get:
+      tags: [Sales]
+      summary: Get all sales (Admin)
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200": { description: List of sales }
+
+  /api/sales/my:
+    get:
+      tags: [Sales]
+      summary: Get logged-in employee sales
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200": { description: Sales for employee }
+
+  # ---------------- ANALYTICS -----------------
+  /api/analytics/summary:
+    get:
+      tags: [Analytics]
+      summary: Get dashboard summary metrics
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200": { description: Summary }
+
+  /api/analytics/monthly:
+    get:
+      tags: [Analytics]
+      summary: Monthly sales report
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200": { description: Monthly data }
+
+  # ---------------- NOTIFICATIONS -----------------
+  /api/notifications:
+    get:
+      tags: [Notifications]
+      summary: Get all notifications for logged-in user
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200": { description: List of notifications }
+
+  # ---------------- SETTINGS -----------------
+  /api/settings:
+    get:
+      tags: [Settings]
+      summary: Get system settings
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200": { description: Settings data }
+    put:
+      tags: [Settings]
+      summary: Update settings (Admin)
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                invoicePrefix: { type: string, example: "INV" }
+                taxPercent: { type: number, example: 18 }
+      responses:
+        "200": { description: Settings updated }
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    Order:
+      type: object
+      properties:
+        customerId: { type: string }
+        items:
+          type: array
+          items:
+            type: object
+            properties:
+              name: { type: string }
+              quantity: { type: number }
+              price: { type: number }
+        totalAmount: { type: number, example: 5000 }
+        paymentStatus: { type: string, enum: [due, paid] }
+
+    Material:
+      type: object
+      properties:
+        name: { type: string }
+        unit: { type: string, example: "pcs" }
+        costPerUnit: { type: number }
+        availableQty: { type: number }
+        minThreshold: { type: number }
+
+    Product:
+      type: object
+      properties:
+        name: { type: string }
+        description: { type: string }
+        price: { type: number }
+        materialsUsed:
+          type: array
+          items:
+            type: object
+            properties:
+              materialId: { type: string }
+              quantity: { type: number }
+
+    Sale:
+      type: object
+      properties:
+        customerName: { type: string }
+        items:
+          type: array
+          items:
+            type: object
+            properties:
+              productId: { type: string }
+              quantity: { type: number }
+              unitPrice: { type: number }
+        tax: { type: number, example: 100 }
+        paymentStatus: { type: string, enum: [paid, due] }
