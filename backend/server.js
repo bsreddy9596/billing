@@ -20,15 +20,10 @@ const server = http.createServer(app);
 
 const io = new Server(server, {
   cors: {
-    origin: [
-      process.env.FRONTEND_ORIGIN || "http://localhost:5173",
-      "http://localhost:5174",
-    ],
-    methods: ["GET", "POST", "PUT", "PATCH", "DELETE"],
-    allowedHeaders: ["Content-Type", "Authorization"],
+    origin: process.env.FRONTEND_ORIGIN,
+    methods: ["GET", "POST"],
     credentials: true,
   },
-  transports: ["websocket", "polling"],
 });
 
 app.set("io", io);
@@ -51,10 +46,7 @@ connectDB()
 // =============================
 app.use(
   cors({
-    origin: [
-      process.env.FRONTEND_ORIGIN || "http://localhost:5173",
-      "http://localhost:5174",
-    ],
+    origin: process.env.FRONTEND_ORIGIN,
     credentials: true,
   })
 );
