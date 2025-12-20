@@ -18,18 +18,16 @@ const server = http.createServer(app);
 const allowedOrigins = [
   "http://localhost:5173",
   "http://localhost:5174",
-  "https://billing-qahs.vercel.app",
+  "https://billing-qahs.vercel.app", // Admin App
   "https://furniturepro.vercel.app",
+  "https://billing-psi-two.vercel.app", // ✅ Employee App (IMPORTANT)
 ];
 
 const corsOptions = {
-  origin: function (origin, callback) {
+  origin: (origin, callback) => {
     if (!origin) return callback(null, true);
-    if (allowedOrigins.includes(origin)) {
-      callback(null, true);
-    } else {
-      callback(new Error("Not allowed by CORS"));
-    }
+    if (allowedOrigins.includes(origin)) return callback(null, true);
+    return callback(null, false);
   },
   credentials: true,
 };
@@ -56,14 +54,16 @@ app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true }));
 
 app.use(
-  morgan("tiny", { stream: { write: (msg) => logger.http(msg.trim()) } })
+  morgan("tiny", {
+    stream: { write: (msg) => logger.http(msg.trim()) },
+  })
 );
 
 app.use("/uploads", express.static("uploads"));
 
 try {
   YAML.load("./swagger.yaml");
-} catch (err) {
+} catch {
   logger.warn("Swagger file missing");
 }
 
