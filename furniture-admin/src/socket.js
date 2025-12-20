@@ -1,21 +1,20 @@
 import { io } from "socket.io-client";
 
-// ⚡ Backend server URL (.env or default localhost)
-const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || "http://localhost:5000";
+const SOCKET_URL = import.meta.env.VITE_SOCKET_URL;
 
 const socket = io(SOCKET_URL, {
   transports: ["websocket"],
+  withCredentials: true,
   reconnectionAttempts: 5,
   reconnectionDelay: 2000,
 });
 
-// Log socket events (optional for debugging)
 socket.on("connect", () => {
-  console.log("🟢 Connected to socket:", socket.id);
+  console.log("🟢 Socket connected:", socket.id);
 });
 
 socket.on("disconnect", () => {
-  console.log("🔴 Disconnected from socket");
+  console.log("🔴 Socket disconnected");
 });
 
 export default socket;
