@@ -11,6 +11,7 @@ const {
   getProductStockAgeing,
   getMaterialStockAgeing,
   getDeadStockProducts,
+  getProductWiseProfit,
 } = require("../controllers/analyticsController");
 
 router.get("/summary", protect, getSummary);
@@ -36,6 +37,12 @@ router.get(
   protect,
   checkRole("admin"),
   getDeadStockProducts
+);
+router.get(
+  "/product-profit",
+  protect,
+  checkRole("admin"),
+  getProductWiseProfit
 );
 
 router.get("/order-profit", protect, getOrderWiseProfit);

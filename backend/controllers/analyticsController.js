@@ -69,10 +69,9 @@ async function getMaterialUsage(req, res, next) {
     next(err);
   }
 }
+
 async function getSummary(req, res, next) {
   try {
-    console.log("🔥 SUMMARY API HIT – FINAL FIX");
-
     const [orders, invoices, products, materials] = await Promise.all([
       Order.find({}).lean(),
       Invoice.find({}).lean(),
@@ -80,13 +79,25 @@ async function getSummary(req, res, next) {
       Material.find({}).lean(),
     ]);
 
+    /* ================= INIT ================= */
     let ordersRevenue = 0;
-    let salesQty = 0;
-    let paidAmount = 0;
-    let dueAmount = 0;
-    let profit = 0;
+    let orderPaidAmount = 0;
+    let orderDueAmount = 0;
+    let orderProfit = 0;
 
-    // 🔑 Product Map
+    let productsRevenue = 0;
+    let productPaidAmount = 0;
+    let productDueAmount = 0;
+    let productProfit = 0;
+    let salesQty = 0;
+
+    /* ===== ORDER STATUS COUNTS ===== */
+    let pendingOrders = 0;
+    let confirmedOrders = 0;
+    let processingOrders = 0;
+    let readyForDeliveryOrders = 0;
+
+    /* ================= PRODUCT MAP ================= */
     const productMap = {};
     products.forEach((p) => {
       productMap[p._id.toString()] = p;
@@ -94,61 +105,107 @@ async function getSummary(req, res, next) {
 
     /* ================= ORDERS ================= */
     orders.forEach((o) => {
-      ordersRevenue += Number(o.saleAmount || o.finalSalePrice || 0);
-      salesQty += (o.items || []).reduce((s, i) => s + Number(i.qty || 0), 0);
-      profit += Number(o.profit || 0);
+      const sale = Number(o.saleAmount || 0);
+      const materialCost = Number(o.totalMaterialCost || 0);
+      const expenses = Array.isArray(o.expenses)
+        ? o.expenses.reduce((sum, e) => sum + Number(e.amount || 0), 0)
+        : 0;
+
+      ordersRevenue += sale;
+      orderProfit += sale - (materialCost + expenses);
+
+      /* ORDER STATUS */
+      switch (o.status) {
+        case "pending":
+          pendingOrders++;
+          break;
+        case "confirmed":
+          confirmedOrders++;
+          break;
+        case "processing":
+          processingOrders++;
+          break;
+        case "ready":
+        case "ready_for_delivery":
+          readyForDeliveryOrders++;
+          break;
+        default:
+          break;
+      }
     });
 
     /* ================= INVOICES ================= */
     invoices.forEach((inv) => {
-      const isDirect = !inv.orderId;
-
-      if (isDirect) {
-        ordersRevenue += Number(inv.total || 0);
+      /* ===== ORDER INVOICES ===== */
+      if (inv.invoiceType === "order") {
+        orderPaidAmount += Number(inv.paidAmount || 0);
+        orderDueAmount += Number(inv.dueAmount || 0);
       }
 
-      paidAmount += Number(inv.paidAmount || 0);
-      dueAmount += Number(inv.dueAmount || 0);
+      /* ===== PRODUCT INVOICES ===== */
+      let hasProductItems = false;
 
-      if (isDirect) {
-        (inv.items || []).forEach((it) => {
-          if (!it.productId) return; // ❌ skip broken data
+      (inv.items || []).forEach((it) => {
+        if (!it.productId) return;
 
-          const product = productMap[it.productId.toString()];
-          if (!product) return;
+        hasProductItems = true;
 
-          const qty = Number(it.qty || 0);
-          const sell = Number(it.rate || 0);
+        const qty = Number(it.qty || 0);
+        const rate = Number(it.rate || 0);
+
+        productsRevenue += qty * rate;
+        salesQty += qty;
+
+        const product = productMap[it.productId.toString()];
+        if (product) {
           const buy = Number(product.buyPrice || 0);
+          productProfit += (rate - buy) * qty;
+        }
+      });
 
-          salesQty += qty;
-          profit += (sell - buy) * qty;
-        });
+      if (hasProductItems) {
+        productPaidAmount += Number(inv.paidAmount || 0);
+        productDueAmount += Number(inv.dueAmount || 0);
       }
     });
 
     /* ================= INVENTORY ================= */
     const productStockValue = products.reduce(
-      (s, p) => s + (p.stockQty || 0) * (p.buyPrice || 0),
+      (s, p) => s + Number(p.stockQty || 0) * Number(p.buyPrice || 0),
       0
     );
 
     const materialStockValue = materials.reduce(
-      (s, m) => s + (m.availableQty || 0) * (m.costPerUnit || 0),
+      (s, m) => s + Number(m.availableQty || 0) * Number(m.costPerUnit || 0),
       0
     );
 
+    /* ================= RESPONSE ================= */
     res.json({
       success: true,
       data: {
+        /* ORDERS */
         totalOrders: orders.length,
-        ordersRevenue,
+        pendingOrders,
+        confirmedOrders,
+        processingOrders,
+        readyForDeliveryOrders,
+
+        ordersRevenue: Math.round(ordersRevenue),
+        paidAmount: Math.round(orderPaidAmount),
+        dueAmount: Math.round(orderDueAmount),
+        orderProfit: Math.round(orderProfit),
+
+        /* PRODUCTS */
+        productsRevenue: Math.round(productsRevenue),
+        productPaidAmount: Math.round(productPaidAmount),
+        productDueAmount: Math.round(productDueAmount),
+        productProfit: Math.round(productProfit),
         salesQty,
-        paidAmount,
-        dueAmount,
-        productStockValue,
-        materialStockValue,
-        profit: Math.round(profit),
+
+        /* INVENTORY */
+        productStockValue: Math.round(productStockValue),
+        materialStockValue: Math.round(materialStockValue),
       },
     });
   } catch (err) {
@@ -168,23 +225,34 @@ async function getOrderWiseProfit(req, res, next) {
       }
     ).lean();
 
-    const data = orders.map((o) => {
-      const orderValue = Number(o.saleAmount || 0);
-      const materialCost = Number(o.totalMaterialCost || 0);
-      const expenses = Number(o.expenses?.total || 0);
+    const data = orders
+      .map((o) => {
+        const orderValue = Number(o.saleAmount || 0);
+        const materialCost = Number(o.totalMaterialCost || 0);
 
-      return {
-        customerName: o.customerName || "General",
-        orderValue,
-        materialCost,
-        expenses,
-        profit: orderValue - (materialCost + expenses),
-      };
+        // ✅ CORRECT: SUM EXPENSES ARRAY
+        const expenses = Array.isArray(o.expenses)
+          ? o.expenses.reduce((sum, e) => sum + Number(e.amount || 0), 0)
+          : 0;
+
+        const profit = orderValue - (materialCost + expenses);
+
+        return {
+          customerName: o.customerName || "General",
+          orderValue: Math.round(orderValue),
+          materialCost: Math.round(materialCost),
+          expenses: Math.round(expenses), // ✅ NOW SHOWS ₹2000
+          profit: Math.round(profit),
+        };
+      })
+      .filter((o) => o.orderValue > 0);
+
+    res.json({
+      success: true,
+      data,
     });
-
-    res.json({ success: true, data });
   } catch (err) {
-    logger.error(`getOrderWiseProfit: ${err.message}`);
+    console.error("getOrderWiseProfit ERROR:", err);
     next(err);
   }
 }
@@ -331,6 +399,114 @@ async function getMaterialStockAgeing(req, res, next) {
     next(err);
   }
 }
+async function getProductWiseProfit(req, res, next) {
+  try {
+    const [orders, invoices, products] = await Promise.all([
+      Order.find({}).lean(),
+      Invoice.find({}).lean(),
+      Product.find({}).lean(),
+    ]);
+
+    // 🔑 Product Map
+    const productMap = {};
+    products.forEach((p) => {
+      productMap[p._id.toString()] = {
+        name: p.name,
+        buyPrice: Number(p.buyPrice || 0),
+      };
+    });
+
+    // 🔢 Aggregation Map
+    const agg = {};
+
+    const addProduct = (productId, qty, sellRate) => {
+      if (!productMap[productId]) return;
+
+      if (!agg[productId]) {
+        agg[productId] = {
+          name: productMap[productId].name,
+          quantity: 0,
+          revenue: 0,
+          cost: 0,
+          profit: 0,
+        };
+      }
+
+      const buy = productMap[productId].buyPrice;
+
+      agg[productId].quantity += qty;
+      agg[productId].revenue += sellRate * qty;
+      agg[productId].cost += buy * qty;
+      agg[productId].profit += (sellRate - buy) * qty;
+    };
+
+    /* ================= ORDERS ================= */
+    orders.forEach((o) => {
+      (o.items || []).forEach((it) => {
+        if (!it.productId) return;
+
+        addProduct(
+          it.productId.toString(),
+          Number(it.qty || 0),
+          Number(it.rate || it.price || 0)
+        );
+      });
+    });
+
+    /* ================= DIRECT INVOICES ================= */
+    invoices.forEach((inv) => {
+      if (inv.orderId) return; // only direct invoices
+
+      (inv.items || []).forEach((it) => {
+        if (!it.productId) return;
+
+        addProduct(
+          it.productId.toString(),
+          Number(it.qty || 0),
+          Number(it.rate || 0)
+        );
+      });
+    });
+
+    /* ================= FINAL ARRAY ================= */
+    const productsData = Object.values(agg).sort(
+      (a, b) => b.quantity - a.quantity
+    );
+
+    /* ================= SUMMARY ================= */
+    const summary = productsData.reduce(
+      (acc, p) => {
+        acc.revenue += p.revenue;
+        acc.cost += p.cost;
+        acc.profit += p.profit;
+        acc.quantity += p.quantity;
+        return acc;
+      },
+      { revenue: 0, cost: 0, profit: 0, quantity: 0 }
+    );
+
+    res.json({
+      success: true,
+      data: {
+        summary: {
+          revenue: Math.round(summary.revenue),
+          cost: Math.round(summary.cost),
+          profit: Math.round(summary.profit),
+          quantity: summary.quantity,
+        },
+        products: productsData.map((p) => ({
+          ...p,
+          revenue: Math.round(p.revenue),
+          cost: Math.round(p.cost),
+          profit: Math.round(p.profit),
+        })),
+      },
+    });
+  } catch (err) {
+    logger.error(`getProductWiseProfit: ${err.message}`);
+    next(err);
+  }
+}
 
 module.exports = {
   getMonthlyStats,
@@ -340,4 +516,5 @@ module.exports = {
   getProductStockAgeing,
   getMaterialStockAgeing,
   getDeadStockProducts,
+  getProductWiseProfit,
 };

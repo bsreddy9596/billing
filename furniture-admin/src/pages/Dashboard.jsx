@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import api from "../api/api";
+
 import {
     BarChart,
     Bar,
@@ -10,6 +11,7 @@ import {
     CartesianGrid,
     Legend,
 } from "recharts";
+
 import {
     ShoppingBag,
     Clock,
@@ -19,7 +21,14 @@ import {
 } from "lucide-react";
 
 export default function Dashboard() {
-    const [summary, setSummary] = useState({});
+    const [summary, setSummary] = useState({
+        totalOrders: 0,
+        pendingOrders: 0,
+        confirmedOrders: 0,
+        processingOrders: 0,
+        readyForDeliveryOrders: 0,
+    });
+
     const [monthly, setMonthly] = useState([]);
     const [loading, setLoading] = useState(true);
 
@@ -31,7 +40,7 @@ export default function Dashboard() {
                     api.get("/analytics/monthly"),
                 ]);
 
-                setSummary(summaryRes.data?.data || []);
+                setSummary(summaryRes.data?.data || {});
                 setMonthly(monthlyRes.data?.data || []);
             } catch (err) {
                 console.error("❌ Dashboard Fetch Error:", err);
@@ -52,7 +61,7 @@ export default function Dashboard() {
     }
 
     return (
-        <div className="p-6 space-y-8">
+        <div className="p-6 space-y-8 bg-gray-50 min-h-screen">
             <h1 className="text-3xl font-extrabold text-gray-900 flex items-center gap-2">
                 🏠 Dashboard Overview
             </h1>
@@ -62,35 +71,35 @@ export default function Dashboard() {
                 <StatCard
                     icon={<ShoppingBag size={26} />}
                     label="Total Orders"
-                    value={summary.totalOrders || 0}
+                    value={summary.totalOrders}
                     gradient="from-[#00BFA6] to-[#009E8E]"
                 />
 
                 <StatCard
                     icon={<Clock size={26} />}
                     label="Pending Orders"
-                    value={summary.pendingOrders || 0}
+                    value={summary.pendingOrders}
                     gradient="from-yellow-400 to-orange-500"
                 />
 
                 <StatCard
                     icon={<CheckCircle size={26} />}
                     label="Confirmed Orders"
-                    value={summary.confirmedOrders || 0}
+                    value={summary.confirmedOrders}
                     gradient="from-emerald-400 to-green-600"
                 />
 
                 <StatCard
                     icon={<RefreshCcw size={26} />}
                     label="Processing Orders"
-                    value={summary.processingOrders || 0}
+                    value={summary.processingOrders}
                     gradient="from-sky-400 to-blue-500"
                 />
 
                 <StatCard
                     icon={<Truck size={26} />}
                     label="Ready for Delivery"
-                    value={summary.readyForDeliveryOrders || 0}
+                    value={summary.readyForDeliveryOrders}
                     gradient="from-purple-400 to-fuchsia-600"
                 />
             </div>
@@ -101,26 +110,35 @@ export default function Dashboard() {
                     📊 Monthly Orders
                 </h2>
 
-                <div className="flex justify-center items-center w-full h-[320px]">
-                    <ResponsiveContainer width="95%" height="100%">
-                        <BarChart
-                            data={monthly}
-                            margin={{ top: 20, right: 30, left: 0, bottom: 10 }}
-                        >
-                            <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-                            <XAxis dataKey="month" stroke="#6b7280" />
-                            <YAxis stroke="#6b7280" />
-                            <Tooltip />
-                            <Legend />
-                            <Bar
-                                dataKey="totalOrders"
-                                name="Orders"
-                                fill="#00BFA6"
-                                radius={[6, 6, 0, 0]}
-                            />
-                        </BarChart>
-                    </ResponsiveContainer>
-                </div>
+                {monthly.length === 0 ? (
+                    <div className="text-center text-gray-400 py-10">
+                        No data available
+                    </div>
+                ) : (
+                    <div className="flex justify-center items-center w-full h-[320px]">
+                        <ResponsiveContainer width="95%" height="100%">
+                            <BarChart
+                                data={monthly}
+                                margin={{ top: 20, right: 30, left: 0, bottom: 10 }}
+                            >
+                                <CartesianGrid
+                                    strokeDasharray="3 3"
+                                    stroke="#e5e7eb"
+                                />
+                                <XAxis dataKey="month" stroke="#6b7280" />
+                                <YAxis stroke="#6b7280" allowDecimals={false} />
+                                <Tooltip />
+                                <Legend />
+                                <Bar
+                                    dataKey="totalOrders"
+                                    name="Orders"
+                                    fill="#00BFA6"
+                                    radius={[6, 6, 0, 0]}
+                                />
+                            </BarChart>
+                        </ResponsiveContainer>
+                    </div>
+                )}
             </div>
         </div>
     );

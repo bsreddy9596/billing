@@ -5,16 +5,15 @@ const mongoose = require("mongoose");
 ================================ */
 const lineItemSchema = new mongoose.Schema(
   {
-    // 🔥 REQUIRED FOR STOCK + PROFIT
     productId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Product",
-      required: true,
     },
 
     description: {
       type: String,
       required: true,
+      trim: true,
     },
 
     qty: {
@@ -34,7 +33,6 @@ const lineItemSchema = new mongoose.Schema(
     amount: {
       type: Number,
       required: true,
-      default: 0,
       min: 0,
     },
   },
@@ -48,7 +46,7 @@ const paymentSchema = new mongoose.Schema(
   {
     label: {
       type: String,
-      default: "Payment",
+      default: "Payment", // Advance / Payment
     },
 
     amount: {
@@ -64,10 +62,10 @@ const paymentSchema = new mongoose.Schema(
 
     method: {
       type: String,
+      enum: ["cash", "upi", "bank"],
       default: "cash",
     },
 
-    // employee/admin who received payment
     receivedBy: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
@@ -82,21 +80,34 @@ const paymentSchema = new mongoose.Schema(
 ================================ */
 const invoiceSchema = new mongoose.Schema(
   {
+    /* 🔥 INVOICE TYPE */
+    invoiceType: {
+      type: String,
+      enum: ["order", "product"],
+      required: true,
+      index: true,
+    },
+
+    /* 🔗 ORDER LINK */
     orderId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Order",
       default: null,
+      index: true,
     },
 
     invoiceNumber: {
       type: String,
       unique: true,
       required: true,
+      index: true,
     },
 
+    /* 👤 CUSTOMER */
     customerName: {
       type: String,
       trim: true,
+      required: true,
     },
 
     customerPhone: {
@@ -109,12 +120,13 @@ const invoiceSchema = new mongoose.Schema(
       trim: true,
     },
 
-    // 🔥 PRODUCTS SOLD
+    /* 🛒 ITEMS */
     items: {
       type: [lineItemSchema],
       required: true,
     },
 
+    /* 💰 TOTALS */
     subTotal: {
       type: Number,
       default: 0,
@@ -140,6 +152,7 @@ const invoiceSchema = new mongoose.Schema(
       default: 0,
     },
 
+    /* 💳 PAYMENTS */
     payments: {
       type: [paymentSchema],
       default: [],
@@ -159,18 +172,36 @@ const invoiceSchema = new mongoose.Schema(
       type: String,
       enum: ["unpaid", "partial", "paid"],
       default: "unpaid",
+      index: true,
     },
 
-    // created by employee/admin
+    /* 👤 CREATED BY */
     createdBy: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
       required: true,
     },
 
-    /* ===============================
-       LOCK SYSTEM
-    ================================ */
+    /* ✏️ LAST UPDATED BY (PAYMENT ADD) */
+    updatedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      default: null,
+    },
+
+    /* 💳 LAST PAYMENT TRACK */
+    lastPaymentBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      default: null,
+    },
+
+    lastPaymentAt: {
+      type: Date,
+      default: null,
+    },
+
+    /* 🔒 LOCK SYSTEM */
     locked: {
       type: Boolean,
       default: false,
@@ -181,15 +212,30 @@ const invoiceSchema = new mongoose.Schema(
       default: null,
     },
 
-    /* ===============================
-       PRINT TRACKING
-    ================================ */
+    /* 🖨 PRINT TRACKING */
     printedAt: {
       type: Date,
       default: null,
     },
 
     printedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      default: null,
+    },
+
+    /* ❌ CANCEL SUPPORT */
+    cancelled: {
+      type: Boolean,
+      default: false,
+    },
+
+    cancelledAt: {
+      type: Date,
+      default: null,
+    },
+
+    cancelledBy: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
       default: null,

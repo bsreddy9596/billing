@@ -1,3 +1,54 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+@media print {
+  body {
+    background: white;
+  }
+
+  .print\:hidden {
+    display: none !important;
+  }
+}
+/* =========================
+   PRINT ONLY INVOICE
+========================= */
+@media print {
+  /* hide everything */
+  body * {
+    visibility: hidden;
+  }
+
+  /* show only invoice */
+  .invoice-print,
+  .invoice-print * {
+    visibility: visible;
+  }
+
+  /* remove layout spacing */
+  body {
+    margin: 0;
+    padding: 0;
+    background: white;
+  }
+
+  .invoice-print {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    margin: 0;
+    padding: 20px;
+  }
+
+  /* disable shadows & radius */
+  .invoice-print {
+    box-shadow: none !important;
+    border-radius: 0 !important;
+  }
+
+  /* avoid page break inside tables */
+  table {
+    page-break-inside: avoid;
+  }
+}

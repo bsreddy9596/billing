@@ -165,7 +165,14 @@ export default function OrderDetails() {
             };
 
         const totalMaterials = (order.materialsUsed || []).reduce((s, m) => {
-            const rate = Number(m.costPerUnit ?? m.materialId?.costPerUnit ?? 0);
+            const rate = Number(
+                m.price ??
+                m.materialId?.price ??
+                m.costPerUnit ??
+                m.materialId?.costPerUnit ??
+                0
+            );
+
             return s + rate * Number(m.quantity || 0);
         }, 0);
 
@@ -340,6 +347,19 @@ export default function OrderDetails() {
     };
 
 
+    const openInvoice = async () => {
+        try {
+            // 1️⃣ create / get invoice using orderId
+            const res = await api.post(`/invoices/order/${order._id}`);
+            const invoice = res.data.data;
+
+            // 2️⃣ open preview using invoiceId
+            navigate(`/invoice/order/${invoice._id}`);
+        } catch (err) {
+            toast.error("Invoice create / load failed");
+        }
+    };
+
     /* ---------- RENDER ---------- */
     if (loading) return <div className="p-10 text-center">Loading...</div>;
     if (!order) return <div className="p-10 text-center text-red-500">Order Not Found</div>;
@@ -356,11 +376,14 @@ export default function OrderDetails() {
                     <button onClick={() => navigate(-1)} className="px-4 py-2 bg-gray-100 rounded">Back</button>
 
                     <button
-                        onClick={() => navigate(`/billing/new?orderId=${order._id}`)}
-                        className="px-4 py-2 bg-white border rounded shadow"
+                        onClick={openInvoice}
+                        className="px-4 py-2 bg-[#0e9a86] text-white rounded"
                     >
                         Invoice
                     </button>
+
+
+
 
 
 
@@ -483,7 +506,19 @@ export default function OrderDetails() {
                                                         {p.note && <div className="text-xs text-gray-500">{p.note}</div>}
                                                     </div>
                                                 </div>
-                                                <div className="font-semibold">₹{Number(p.amount).toLocaleString()}</div>
+                                                <div className="flex items-center gap-2">
+                                                    <div className="font-semibold">₹{Number(p.amount).toLocaleString()}</div>
+
+                                                    {p.receiptId && (
+                                                        <button
+                                                            onClick={() => navigate(`/receipts/preview/${p.receiptId}`)}
+                                                            className="px-2 py-0.5 text-[10px] border rounded hover:bg-gray-50"
+                                                        >
+                                                            Receipt
+                                                        </button>
+                                                    )}
+                                                </div>
+
                                             </div>
                                         ))}
 
@@ -678,6 +713,18 @@ export default function OrderDetails() {
 
                                                 <div className="flex gap-2 items-center">
                                                     <div className="font-semibold">₹{p.amount}</div>
+
+                                                    {/* ✅ ADVANCE RECEIPT */}
+                                                    {p.receiptId && (
+                                                        <button
+                                                            onClick={() => navigate(`/receipts/preview/${p.receiptId}`)}
+                                                            className="px-2 py-1 text-xs border rounded hover:bg-gray-50"
+                                                        >
+                                                            Receipt
+                                                        </button>
+                                                    )}
+
+
 
                                                     {role === "admin" && (
                                                         <>

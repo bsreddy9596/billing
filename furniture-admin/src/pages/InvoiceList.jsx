@@ -1,15 +1,9 @@
 import React, { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import api from "../../api/api";
+import api from "../api/api";
 import html2canvas from "html2canvas";
 import jsPDF from "jspdf";
-import {
-    Plus,
-    FileText,
-    ArrowLeft,
-    Printer,
-    Download,
-} from "lucide-react";
+import { Plus, FileText, ArrowLeft, Printer, Download } from "lucide-react";
 
 /* ---------- HELPERS ---------- */
 const fmtDate = (d) =>
@@ -17,7 +11,7 @@ const fmtDate = (d) =>
 
 const money = (v) => `₹${Number(v || 0).toLocaleString("en-IN")}`;
 
-export default function EmployeeInvoiceList() {
+export default function InvoiceList() {
     const navigate = useNavigate();
     const listRef = useRef(null);
 
@@ -25,7 +19,6 @@ export default function EmployeeInvoiceList() {
     const [filter, setFilter] = useState("all");
     const [loading, setLoading] = useState(true);
 
-    /* ================= LOAD ================= */
     const loadInvoices = async () => {
         try {
             setLoading(true);
@@ -43,7 +36,7 @@ export default function EmployeeInvoiceList() {
         loadInvoices();
     }, [filter]);
 
-    /* ================= PDF ================= */
+    /* ---------- PDF ---------- */
     const downloadPDF = async () => {
         const canvas = await html2canvas(listRef.current, { scale: 2 });
         const imgData = canvas.toDataURL("image/png");
@@ -51,12 +44,12 @@ export default function EmployeeInvoiceList() {
         const w = pdf.internal.pageSize.getWidth();
         const h = (canvas.height * w) / canvas.width;
         pdf.addImage(imgData, "PNG", 0, 0, w, h);
-        pdf.save(`Employee-Invoices-${filter}.pdf`);
+        pdf.save(`Invoices-${filter}.pdf`);
     };
 
     return (
         <div className="bg-gray-100 min-h-screen p-8">
-            {/* ACTION BAR */}
+            {/* ACTION BAR (same style as InvoicePreview) */}
             <div className="max-w-6xl mx-auto flex justify-between mb-6 print:hidden">
                 <button
                     onClick={() => navigate(-1)}
@@ -89,13 +82,13 @@ export default function EmployeeInvoiceList() {
                         Invoices
                     </h1>
 
-                    {/* ✅ QUICK BILLING */}
                     <button
-                        onClick={() => navigate("/billing/quick")}
+                        onClick={() => navigate("/billing/new")}
                         className="flex items-center gap-2 px-4 py-2 rounded bg-[#0e9a86] text-white"
                     >
                         <Plus size={16} /> Create Bill
                     </button>
+
                 </div>
 
                 {/* FILTERS */}
@@ -179,11 +172,13 @@ export default function EmployeeInvoiceList() {
                                             </span>
                                         </td>
                                         <td className="p-3 text-right">
-                                            {/* ✅ READ ONLY VIEW */}
                                             <button
                                                 onClick={() =>
-                                                    navigate(`/invoice/view/${inv._id}`)
+                                                    inv.invoiceType === "order"
+                                                        ? navigate(`/invoice/order/${inv._id}`)
+                                                        : navigate(`/invoice/product/${inv._id}`)
                                                 }
+
                                                 className="inline-flex items-center gap-1 text-[#0e9a86] hover:underline"
                                             >
                                                 <FileText size={14} /> View

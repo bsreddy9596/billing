@@ -3,50 +3,45 @@ const router = express.Router();
 const { protect, checkRole } = require("../middlewares/authMiddleware");
 const invoiceController = require("../controllers/invoiceController");
 
-/* ============================
-   INVOICES (LIST + CREATE)
-============================ */
-
+/* =====================================================
+   🔥 ORDER → GET OR CREATE INVOICE (MAIN API)
+   Used by OrderDetails → Invoice button
+===================================================== */
 router.post(
-  "/",
+  "/order/:orderId",
   protect,
   checkRole("admin", "employee"),
-  invoiceController.createInvoice
+  invoiceController.getOrCreateOrderInvoice
 );
 
+/* =====================================================
+   🧾 PRODUCT BILLING (DIRECT SALE)
+===================================================== */
+router.post(
+  "/product",
+  protect,
+  checkRole("admin", "employee"),
+  invoiceController.createProductInvoice
+);
+
+/* =====================================================
+   📄 INVOICE LIST
+===================================================== */
 router.get(
   "/",
   protect,
   checkRole("admin", "employee"),
   invoiceController.getInvoices
 );
-
-/* ============================
-   GENERATE (⚠️ MUST BE ABOVE :id)
-============================ */
-
 router.get(
-  "/generate/:orderId",
+  "/due",
   protect,
   checkRole("admin", "employee"),
-  invoiceController.generateOrUpdateInvoice
+  invoiceController.getDueInvoices
 );
-
-/* ============================
-   PDF (⚠️ ABOVE :id)
-============================ */
-
-router.get(
-  "/:id/pdf",
-  protect,
-  checkRole("admin", "employee"),
-  invoiceController.getInvoicePdf
-);
-
-/* ============================
-   SINGLE INVOICE (DYNAMIC)
-============================ */
-
+/* =====================================================
+   📄 SINGLE INVOICE (BY INVOICE ID)
+===================================================== */
 router.get(
   "/:id",
   protect,
@@ -54,43 +49,30 @@ router.get(
   invoiceController.getInvoiceById
 );
 
-router.put(
-  "/:id",
+/* =====================================================
+   🖨 PDF PRINT
+===================================================== */
+router.get(
+  "/:id/pdf",
   protect,
   checkRole("admin", "employee"),
-  invoiceController.updateInvoice
+  invoiceController.getInvoicePdf
 );
 
-router.delete(
-  "/:id",
+/* =====================================================
+   ❌ CANCEL INVOICE (ADMIN ONLY)
+===================================================== */
+router.put(
+  "/:id/cancel",
   protect,
   checkRole("admin"),
-  invoiceController.deleteInvoice
+  invoiceController.cancelInvoice
 );
-
-/* ============================
-   PAYMENTS
-============================ */
-
-router.post(
-  "/:id/payments",
+router.patch(
+  "/:id/payment",
   protect,
   checkRole("admin", "employee"),
-  invoiceController.addPayment
-);
-
-router.put(
-  "/:id/payments/:index",
-  protect,
-  checkRole("admin", "employee"),
-  invoiceController.editPayment
-);
-
-router.delete(
-  "/:id/payments/:index",
-  protect,
-  checkRole("admin", "employee"),
-  invoiceController.deletePayment
+  invoiceController.addInvoicePayment
 );
 
 module.exports = router;

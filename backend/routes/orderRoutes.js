@@ -6,50 +6,51 @@ const {
   createOrder,
   confirmOrder,
   rejectOrder,
+
   addMaterialUsage,
   editMaterialUsage,
   deleteMaterialUsage,
+
   addExpense,
   editExpense,
   deleteExpense,
+
   updateOrderStatus,
   getAllOrders,
   getMyOrders,
   getSingleOrder,
+
   updateDrawing,
   updateOrder,
   deleteOrder,
 
-  // NEW PAYMENT FUNCTIONS
+  // 🔥 PAYMENTS (ORDER LEVEL)
   addPayment,
   editPayment,
   deletePayment,
 } = require("../controllers/orderController");
 
-/* ----------------------------------------------------------
-   CREATE ORDER  (Employee/Admin)
----------------------------------------------------------- */
+/* =====================================================
+   ORDERS
+===================================================== */
+
+// Create Order (Employee / Admin)
 router.post("/", protect, checkRole("employee", "admin"), createOrder);
 
-/* ----------------------------------------------------------
-   UPDATE ORDER
----------------------------------------------------------- */
+// Update Order
 router.put("/:id", protect, checkRole("employee", "admin"), updateOrder);
 
-/* ----------------------------------------------------------
-   DELETE ORDER
----------------------------------------------------------- */
+// Delete Order
 router.delete("/:id", protect, checkRole("employee", "admin"), deleteOrder);
 
-/* ----------------------------------------------------------
-   CONFIRM / REJECT ORDER (Admin Only)
----------------------------------------------------------- */
+// Confirm / Reject (Admin Only)
 router.put("/confirm/:id", protect, checkRole("admin"), confirmOrder);
 router.put("/reject/:id", protect, checkRole("admin"), rejectOrder);
 
-/* ----------------------------------------------------------
+/* =====================================================
    MATERIAL USAGE
----------------------------------------------------------- */
+===================================================== */
+
 router.put(
   "/:id/materials",
   protect,
@@ -71,11 +72,14 @@ router.delete(
   deleteMaterialUsage
 );
 
-/* ----------------------------------------------------------
+/* =====================================================
    EXPENSES (Admin Only)
----------------------------------------------------------- */
+===================================================== */
+
 router.put("/:id/expense", protect, checkRole("admin"), addExpense);
+
 router.put("/:id/expense/:expenseId", protect, checkRole("admin"), editExpense);
+
 router.delete(
   "/:id/expense/:expenseId",
   protect,
@@ -83,47 +87,11 @@ router.delete(
   deleteExpense
 );
 
-/* ----------------------------------------------------------
-   ORDER STATUS UPDATE
----------------------------------------------------------- */
-router.put(
-  "/:id/status",
-  protect,
-  checkRole("employee", "admin"),
-  updateOrderStatus
-);
+/* =====================================================
+   PAYMENTS (🔥 FIXED – THIS WAS MISSING 🔥)
+===================================================== */
 
-/* ----------------------------------------------------------
-   LIST ORDERS
----------------------------------------------------------- */
-router.get("/", protect, checkRole("admin"), getAllOrders);
-router.get("/my", protect, checkRole("employee"), getMyOrders);
-
-/* ----------------------------------------------------------
-   GET SINGLE ORDER
----------------------------------------------------------- */
-router.get(
-  "/single/:id",
-  protect,
-  checkRole("employee", "admin"),
-  getSingleOrder
-);
-
-/* ----------------------------------------------------------
-   UPDATE DRAWING
----------------------------------------------------------- */
-router.put(
-  "/:id/update-drawing/:index",
-  protect,
-  checkRole("employee", "admin"),
-  updateDrawing
-);
-
-/* ----------------------------------------------------------
-   PAYMENTS (Added inside ORDER)
----------------------------------------------------------- */
-
-// Add payment to order
+// Add payment / advance
 router.post(
   "/:orderId/payments",
   protect,
@@ -131,7 +99,7 @@ router.post(
   addPayment
 );
 
-// Edit payment
+// Edit payment (Admin only)
 router.put(
   "/:orderId/payments/:paymentId",
   protect,
@@ -139,12 +107,55 @@ router.put(
   editPayment
 );
 
-// Delete payment
+// Delete payment (Admin only)
 router.delete(
   "/:orderId/payments/:paymentId",
   protect,
   checkRole("admin"),
   deletePayment
+);
+
+/* =====================================================
+   ORDER STATUS
+===================================================== */
+
+router.put(
+  "/:id/status",
+  protect,
+  checkRole("employee", "admin"),
+  updateOrderStatus
+);
+
+/* =====================================================
+   LIST ORDERS
+===================================================== */
+
+// Admin → all orders
+router.get("/", protect, checkRole("admin"), getAllOrders);
+
+// Employee → own orders
+router.get("/my", protect, checkRole("employee"), getMyOrders);
+
+/* =====================================================
+   SINGLE ORDER
+===================================================== */
+
+router.get(
+  "/single/:id",
+  protect,
+  checkRole("employee", "admin"),
+  getSingleOrder
+);
+
+/* =====================================================
+   DRAWINGS
+===================================================== */
+
+router.put(
+  "/:id/update-drawing/:index",
+  protect,
+  checkRole("employee", "admin"),
+  updateDrawing
 );
 
 module.exports = router;

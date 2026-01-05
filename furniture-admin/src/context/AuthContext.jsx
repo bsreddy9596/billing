@@ -5,33 +5,35 @@ export const AuthContext = createContext();
 
 export function AuthProvider({ children }) {
     const [user, setUser] = useState(null);
-    const [token, setToken] = useState(localStorage.getItem("token"));
+    const [token, setToken] = useState(() => localStorage.getItem("token"));
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
         try {
             const savedUser = localStorage.getItem("user");
-            if (savedUser && token) {
+            const savedToken = localStorage.getItem("token");
+
+            if (savedUser && savedToken) {
                 setUser(JSON.parse(savedUser));
+                setToken(savedToken);
             }
         } catch (err) {
-            console.error("⚠️ AuthContext JSON parse error:", err);
-            localStorage.removeItem("user");
+            console.error("AuthContext parse error", err);
+            localStorage.clear();
         } finally {
             setLoading(false);
         }
-    }, [token]);
+    }, []);
 
     const login = (newToken, userData) => {
         localStorage.setItem("token", newToken);
         localStorage.setItem("user", JSON.stringify(userData));
-        setUser(userData);
         setToken(newToken);
+        setUser(userData);
     };
 
     const logout = () => {
-        localStorage.removeItem("token");
-        localStorage.removeItem("user");
+        localStorage.clear();
         setUser(null);
         setToken(null);
     };

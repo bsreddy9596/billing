@@ -9,6 +9,8 @@ import {
     Layers,
     X,
     ReceiptText,
+    Clock,
+    FileText, // ✅ NEW ICON FOR RECEIPTS
 } from "lucide-react";
 
 const menuSections = [
@@ -25,8 +27,14 @@ const menuSections = [
             { name: "Products", icon: <Package size={18} />, path: "/products" },
             { name: "Orders", icon: <ClipboardList size={18} />, path: "/orders" },
 
-            // ✅ NEW BILLING ROUTE
-            { name: "Billing", icon: <ReceiptText size={18} />, path: "/billing" },
+            // ✅ INVOICES
+            { name: "Invoices", icon: <ReceiptText size={18} />, path: "/invoices" },
+
+            // ✅ RECEIPTS LIST (NEW)
+            { name: "Receipts", icon: <FileText size={18} />, path: "/admin/receipts" },
+
+            // ✅ INVOICE DUE
+            { name: "Invoice Due", icon: <Clock size={18} />, path: "/invoices/due" },
 
             { name: "Employees", icon: <Users size={18} />, path: "/employees" },
             { name: "Materials", icon: <Layers size={18} />, path: "/materials" },
@@ -48,7 +56,7 @@ export default function Sidebar({ open, setOpen }) {
                 <div
                     className="fixed inset-0 bg-black bg-opacity-30 z-30 lg:hidden"
                     onClick={() => setOpen(false)}
-                ></div>
+                />
             )}
 
             <aside
@@ -80,6 +88,10 @@ export default function Sidebar({ open, setOpen }) {
                                     <NavLink
                                         key={item.name}
                                         to={item.path}
+                                        end={
+                                            item.path === "/invoices" ||
+                                            item.path === "/receipts"
+                                        } // ✅ active state fix
                                         onClick={() => setOpen(false)}
                                         className={({ isActive }) =>
                                             `flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-all duration-200

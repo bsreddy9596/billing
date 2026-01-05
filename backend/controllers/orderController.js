@@ -3,9 +3,8 @@ console.log("🔥 orderController LOADED");
 const mongoose = require("mongoose");
 const Order = require("../models/Order");
 const Material = require("../models/Material");
-const Invoice = require("../models/Invoice");
-const Payment = require("../models/Payment");
-
+const Receipt = require("../models/Receipt");
+const Counter = require("../models/Counter");
 /* SOCKET HELPER */
 function emit(io, event, data) {
   try {
@@ -39,21 +38,24 @@ async function confirmOrder(req, res, next) {
     const { id } = req.params;
     const { saleAmount } = req.body;
 
-    if (!saleAmount || saleAmount <= 0)
-      return res
-        .status(400)
-        .json({ success: false, message: "Valid saleAmount required" });
+    if (!saleAmount || saleAmount <= 0) {
+      return res.status(400).json({
+        success: false,
+        message: "Valid saleAmount required",
+      });
+    }
 
     const order = await Order.findById(id);
-    if (!order)
-      return res
-        .status(404)
-        .json({ success: false, message: "Order not found" });
+    if (!order) {
+      return res.status(404).json({
+        success: false,
+        message: "Order not found",
+      });
+    }
 
     order.status = "confirmed";
     order.saleAmount = Number(saleAmount);
     order.finalSalePrice = Number(saleAmount);
-
     order.confirmedBy = req.user._id;
     order.confirmedAt = new Date();
 
@@ -61,7 +63,11 @@ async function confirmOrder(req, res, next) {
 
     emit(req.app.get("io"), "order-updated", order);
 
-    res.json({ success: true, message: "Order confirmed", data: order });
+    res.json({
+      success: true,
+      message: "Order confirmed",
+      data: order,
+    });
   } catch (err) {
     next(err);
   }
@@ -71,16 +77,20 @@ async function rejectOrder(req, res, next) {
   try {
     const { reason } = req.body;
 
-    if (!reason)
-      return res
-        .status(400)
-        .json({ success: false, message: "Reject reason required" });
+    if (!reason) {
+      return res.status(400).json({
+        success: false,
+        message: "Reject reason required",
+      });
+    }
 
     const order = await Order.findById(req.params.id);
-    if (!order)
-      return res
-        .status(404)
-        .json({ success: false, message: "Order not found" });
+    if (!order) {
+      return res.status(404).json({
+        success: false,
+        message: "Order not found",
+      });
+    }
 
     order.status = "rejected";
     order.rejectionReason = reason;
@@ -91,7 +101,11 @@ async function rejectOrder(req, res, next) {
 
     emit(req.app.get("io"), "order-updated", order);
 
-    res.json({ success: true, message: "Order rejected", data: order });
+    res.json({
+      success: true,
+      message: "Order rejected",
+      data: order,
+    });
   } catch (err) {
     next(err);
   }
@@ -102,74 +116,108 @@ async function addMaterialUsage(req, res, next) {
     const io = req.app.get("io");
     const order = await Order.findById(req.params.id);
 
-    if (!order)
-      return res
-        .status(404)
-        .json({ success: false, message: "Order not found" });
+    if (!order) {
+      return res.status(404).json({
+        success: false,
+        message: "Order not found",
+      });
+    }
 
     const { materials } = req.body;
-    if (!materials || materials.length === 0)
-      return res
-        .status(400)
-        .json({ success: false, message: "Materials array required" });
+    if (!Array.isArray(materials) || materials.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: "Materials array required",
+      });
+    }
 
     order.materialsUsed = order.materialsUsed || [];
-    let totalMaterialCost = order.totalMaterialCost || 0;
+
+    // start from existing cost (important)
+    let totalMaterialCost = Number(order.totalMaterialCost || 0);
 
     for (const m of materials) {
-      if (!m.materialId || !m.quantity)
+      if (!m.materialId || !m.quantity) {
         return res.status(400).json({
           success: false,
           message: "materialId & quantity required",
         });
+      }
 
+      /* ================= FETCH MATERIAL ================= */
       const mat = await Material.findById(m.materialId);
-      if (!mat)
+      if (!mat) {
         return res.status(404).json({
           success: false,
           message: "Material not found",
         });
+      }
 
       const qty = Number(m.quantity);
+      if (qty <= 0) {
+        return res.status(400).json({
+          success: false,
+          message: "Quantity must be greater than 0",
+        });
+      }
 
-      if (mat.availableQty < qty)
+      /* ================= STOCK CHECK ================= */
+      if (mat.availableQty < qty) {
         return res.status(400).json({
           success: false,
           message: `Insufficient stock for ${mat.name}`,
         });
+      }
 
+      /* ================= CALCULATE COST ================= */
+      const rate = Number(mat.costPerUnit || 0);
+      const total = rate * qty;
+
+      /* ================= UPDATE MATERIAL STOCK ================= */
       mat.availableQty -= qty;
       await mat.save();
 
-      const costPerUnit = mat.costPerUnit || 0;
-
+      /* ================= SAVE INTO ORDER ================= */
       order.materialsUsed.push({
         materialId: mat._id,
         name: mat.name,
         quantity: qty,
         unit: mat.unit,
-        costPerUnit,
+
+        rate, // ✅ UI uses this
+        total, // ✅ UI uses this
+
+        costPerUnit: rate, // optional (keep for analytics)
         usedBy: req.user._id,
         note: m.note || "",
       });
 
-      totalMaterialCost += qty * costPerUnit;
+      /* ================= ADD TO ORDER COST ================= */
+      totalMaterialCost += total;
 
+      /* ================= SOCKET EVENT ================= */
       emit(io, "material-updated", {
         materialId: mat._id,
         availableQty: mat.availableQty,
       });
     }
 
+    /* ================= SAVE ORDER ================= */
     order.totalMaterialCost = totalMaterialCost;
     await order.save();
 
-    emit(io, "order-updated", order);
+    /* 🔥 VERY IMPORTANT — FETCH UPDATED & POPULATED ORDER */
+    const updatedOrder = await Order.findById(order._id).populate(
+      "materialsUsed.materialId"
+    );
+
+    /* SOCKET */
+    emit(io, "order-updated", updatedOrder);
 
     res.json({
       success: true,
-      message: "Materials added",
-      data: order,
+      message: "Materials added successfully",
+      data: updatedOrder,
     });
   } catch (err) {
     next(err);
@@ -183,35 +231,40 @@ async function editMaterialUsage(req, res, next) {
     const { quantity, note } = req.body;
 
     const order = await Order.findById(id);
-    if (!order)
-      return res
-        .status(404)
-        .json({ success: false, message: "Order not found" });
+    if (!order) {
+      return res.status(404).json({
+        success: false,
+        message: "Order not found",
+      });
+    }
 
     const usage = order.materialsUsed.id(materialUsageId);
-    if (!usage)
-      return res
-        .status(404)
-        .json({ success: false, message: "Material usage not found" });
+    if (!usage) {
+      return res.status(404).json({
+        success: false,
+        message: "Material usage not found",
+      });
+    }
 
     const newQty = Number(quantity);
     const oldQty = Number(usage.quantity);
-
     const diff = newQty - oldQty;
 
     const mat = await Material.findById(usage.materialId);
-    if (!mat)
-      return res
-        .status(404)
-        .json({ success: false, message: "Material not found" });
+    if (!mat) {
+      return res.status(404).json({
+        success: false,
+        message: "Material not found",
+      });
+    }
 
     if (diff > 0) {
-      if (mat.availableQty < diff)
+      if (mat.availableQty < diff) {
         return res.status(400).json({
           success: false,
           message: `Insufficient stock for ${mat.name}`,
         });
-
+      }
       mat.availableQty -= diff;
     } else {
       mat.availableQty += Math.abs(diff);
@@ -248,22 +301,28 @@ async function deleteMaterialUsage(req, res, next) {
     const { id, materialUsageId } = req.params;
 
     const order = await Order.findById(id);
-    if (!order)
-      return res
-        .status(404)
-        .json({ success: false, message: "Order not found" });
+    if (!order) {
+      return res.status(404).json({
+        success: false,
+        message: "Order not found",
+      });
+    }
 
     const usage = order.materialsUsed.id(materialUsageId);
-    if (!usage)
-      return res
-        .status(404)
-        .json({ success: false, message: "Material usage not found" });
+    if (!usage) {
+      return res.status(404).json({
+        success: false,
+        message: "Material usage not found",
+      });
+    }
 
     const mat = await Material.findById(usage.materialId);
-    if (!mat)
-      return res
-        .status(404)
-        .json({ success: false, message: "Material not found" });
+    if (!mat) {
+      return res.status(404).json({
+        success: false,
+        message: "Material not found",
+      });
+    }
 
     mat.availableQty += usage.quantity;
     await mat.save();
@@ -295,16 +354,20 @@ async function addExpense(req, res, next) {
     const io = req.app.get("io");
     const { type, label, amount, note } = req.body;
 
-    if (!type || !amount)
-      return res
-        .status(400)
-        .json({ success: false, message: "Type & amount required" });
+    if (!type || !amount) {
+      return res.status(400).json({
+        success: false,
+        message: "Type & amount required",
+      });
+    }
 
     const order = await Order.findById(req.params.id);
-    if (!order)
-      return res
-        .status(404)
-        .json({ success: false, message: "Order not found" });
+    if (!order) {
+      return res.status(404).json({
+        success: false,
+        message: "Order not found",
+      });
+    }
 
     order.expenses.push({
       type,
@@ -318,7 +381,11 @@ async function addExpense(req, res, next) {
 
     emit(io, "order-updated", order);
 
-    res.json({ success: true, message: "Expense added", data: order });
+    res.json({
+      success: true,
+      message: "Expense added",
+      data: order,
+    });
   } catch (err) {
     next(err);
   }
@@ -327,21 +394,24 @@ async function addExpense(req, res, next) {
 async function editExpense(req, res, next) {
   try {
     const io = req.app.get("io");
-
     const { id, expenseId } = req.params;
     const { type, label, amount, note } = req.body;
 
     const order = await Order.findById(id);
-    if (!order)
-      return res
-        .status(404)
-        .json({ success: false, message: "Order not found" });
+    if (!order) {
+      return res.status(404).json({
+        success: false,
+        message: "Order not found",
+      });
+    }
 
     const ex = order.expenses.id(expenseId);
-    if (!ex)
-      return res
-        .status(404)
-        .json({ success: false, message: "Expense not found" });
+    if (!ex) {
+      return res.status(404).json({
+        success: false,
+        message: "Expense not found",
+      });
+    }
 
     if (type) ex.type = type;
     if (label !== undefined) ex.label = label;
@@ -352,7 +422,11 @@ async function editExpense(req, res, next) {
 
     emit(io, "order-updated", order);
 
-    res.json({ success: true, message: "Expense updated", data: order });
+    res.json({
+      success: true,
+      message: "Expense updated",
+      data: order,
+    });
   } catch (err) {
     next(err);
   }
@@ -364,23 +438,31 @@ async function deleteExpense(req, res, next) {
     const { id, expenseId } = req.params;
 
     const order = await Order.findById(id);
-    if (!order)
-      return res
-        .status(404)
-        .json({ success: false, message: "Order not found" });
+    if (!order) {
+      return res.status(404).json({
+        success: false,
+        message: "Order not found",
+      });
+    }
 
     const ex = order.expenses.id(expenseId);
-    if (!ex)
-      return res
-        .status(404)
-        .json({ success: false, message: "Expense not found" });
+    if (!ex) {
+      return res.status(404).json({
+        success: false,
+        message: "Expense not found",
+      });
+    }
 
     ex.deleteOne();
     await order.save();
 
     emit(io, "order-updated", order);
 
-    res.json({ success: true, message: "Expense deleted", data: order });
+    res.json({
+      success: true,
+      message: "Expense deleted",
+      data: order,
+    });
   } catch (err) {
     next(err);
   }
@@ -397,49 +479,48 @@ async function updateOrderStatus(req, res, next) {
       "delivered",
       "completed",
     ];
-    if (!allowed.includes(status))
-      return res
-        .status(400)
-        .json({ success: false, message: "Invalid status" });
+
+    if (!allowed.includes(status)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid status",
+      });
+    }
 
     const order = await Order.findById(req.params.id);
-    if (!order)
-      return res
-        .status(404)
-        .json({ success: false, message: "Order not found" });
+    if (!order) {
+      return res.status(404).json({
+        success: false,
+        message: "Order not found",
+      });
+    }
 
     order.status = status;
     await order.save();
 
     emit(io, "order-updated", order);
 
-    res.json({ success: true, message: "Status updated", data: order });
+    res.json({
+      success: true,
+      message: "Status updated",
+      data: order,
+    });
   } catch (err) {
     next(err);
   }
 }
 
-/* ----------------------------------------------------------
-   GET ALL ORDERS  (FINAL FIXED VERSION)
----------------------------------------------------------- */
 async function getAllOrders(req, res, next) {
   try {
     let { status, search } = req.query;
-
     let query = { isArchived: false };
 
-    /* ⭐ FIX: MULTIPLE STATUS SUPPORT ⭐ */
     if (status) {
       const statusList = status.split(",").filter(Boolean);
-
-      if (statusList.length === 1) {
-        query.status = statusList[0];
-      } else if (statusList.length > 1) {
-        query.status = { $in: statusList };
-      }
+      if (statusList.length === 1) query.status = statusList[0];
+      else if (statusList.length > 1) query.status = { $in: statusList };
     }
 
-    /* SEARCH SUPPORT */
     if (search) {
       query.$or = [
         { customerName: { $regex: search, $options: "i" } },
@@ -476,33 +557,23 @@ async function getMyOrders(req, res, next) {
 
 async function getSingleOrder(req, res, next) {
   try {
-    const orderId = req.params.id;
-    console.log("🔥 getSingleOrder() CALLED with ID:", orderId);
-
-    // Fetch Order
-    const order = await Order.findById(orderId)
+    const order = await Order.findById(req.params.id)
       .populate("createdBy", "name role")
       .populate("confirmedBy", "name role")
       .populate("materialsUsed.materialId", "name unit costPerUnit");
 
     if (!order) {
-      return res
-        .status(404)
-        .json({ success: false, message: "Order not found" });
+      return res.status(404).json({
+        success: false,
+        message: "Order not found",
+      });
     }
-
-    // ✔ payments are stored INSIDE order → no populate needed
-    const payments = order.payments || [];
 
     res.json({
       success: true,
-      data: {
-        ...order.toObject(),
-        payments, // return stored payments
-      },
+      data: order,
     });
   } catch (err) {
-    console.error("❌ ERROR getSingleOrder:", err);
     next(err);
   }
 }
@@ -512,16 +583,20 @@ async function updateDrawing(req, res, next) {
     const { id, index } = req.params;
 
     const order = await Order.findById(id);
-    if (!order)
-      return res
-        .status(404)
-        .json({ success: false, message: "Order not found" });
+    if (!order) {
+      return res.status(404).json({
+        success: false,
+        message: "Order not found",
+      });
+    }
 
     const d = order.drawings[index];
-    if (!d)
-      return res
-        .status(404)
-        .json({ success: false, message: "Drawing not found" });
+    if (!d) {
+      return res.status(404).json({
+        success: false,
+        message: "Drawing not found",
+      });
+    }
 
     const { drawingUrl, serialized, notes, specs, measurements } = req.body;
 
@@ -548,22 +623,28 @@ async function updateDrawing(req, res, next) {
 async function updateOrder(req, res, next) {
   try {
     const order = await Order.findById(req.params.id);
-    if (!order)
-      return res
-        .status(404)
-        .json({ success: false, message: "Order not found" });
+    if (!order) {
+      return res.status(404).json({
+        success: false,
+        message: "Order not found",
+      });
+    }
 
-    if (order.status !== "pending" && req.user.role !== "admin")
+    if (order.status !== "pending" && req.user.role !== "admin") {
       return res.status(400).json({
         success: false,
         message: "Only pending orders can be edited",
       });
+    }
 
     if (
       order.createdBy.toString() !== req.user._id.toString() &&
       req.user.role !== "admin"
     ) {
-      return res.status(403).json({ success: false, message: "Not allowed" });
+      return res.status(403).json({
+        success: false,
+        message: "Not allowed",
+      });
     }
 
     Object.assign(order, req.body);
@@ -586,7 +667,6 @@ async function deleteOrder(req, res, next) {
     const io = req.app.get("io");
     const { id } = req.params;
 
-    // Validate ObjectId
     if (!mongoose.Types.ObjectId.isValid(id)) {
       return res.status(400).json({
         success: false,
@@ -595,7 +675,6 @@ async function deleteOrder(req, res, next) {
     }
 
     const order = await Order.findById(id);
-
     if (!order) {
       return res.status(404).json({
         success: false,
@@ -603,51 +682,55 @@ async function deleteOrder(req, res, next) {
       });
     }
 
-    // Allow admin to delete ANY order
     if (order.status !== "pending" && req.user.role !== "admin") {
       return res.status(400).json({
         success: false,
-        message: "Only pending orders can be deleted by employees",
+        message: "Only pending orders can be deleted",
       });
     }
 
-    // Only creator or admin can delete
     if (
       order.createdBy.toString() !== req.user._id.toString() &&
       req.user.role !== "admin"
     ) {
       return res.status(403).json({
         success: false,
-        message: "Not allowed to delete this order",
+        message: "Not allowed",
       });
     }
 
-    await Invoice.deleteOne({ orderId: order._id });
     await order.deleteOne();
-
     io.emit("order-deleted", { id });
 
-    return res.json({
+    res.json({
       success: true,
       message: "Order deleted successfully",
     });
   } catch (err) {
-    console.error("❌ Delete Order Error:", err);
     next(err);
   }
 }
 
+const genReceiptNo = async () => {
+  const counter = await Counter.findOneAndUpdate(
+    { key: "receipt" },
+    { $inc: { seq: 1 } },
+    { new: true, upsert: true }
+  );
+
+  return `SNGR-R${String(counter.seq).padStart(4, "0")}`;
+};
+
 async function addPayment(req, res, next) {
   try {
-    const orderId = req.params.orderId;
-    let { amount, method = "cash", note = "", type = "payment" } = req.body;
+    const { orderId } = req.params;
+    let { amount, mode = "cash", note = "", type = "payment" } = req.body;
 
-    // Ensure amount is a number
     amount = Number(amount);
-    if (isNaN(amount)) {
+    if (!amount || amount <= 0) {
       return res
         .status(400)
-        .json({ success: false, message: "Amount must be a number" });
+        .json({ success: false, message: "Valid amount required" });
     }
 
     const order = await Order.findById(orderId);
@@ -657,71 +740,64 @@ async function addPayment(req, res, next) {
         .json({ success: false, message: "Order not found" });
     }
 
-    /* 1️⃣ Add Payment to Order */
-    const newPayment = {
+    const paidBefore = order.payments.reduce(
+      (s, p) => s + Number(p.amount || 0),
+      0
+    );
+
+    const payment = {
       amount,
-      method,
+      method: mode,
       note,
       type,
       receivedBy: req.user._id,
-      createdAt: new Date(),
     };
 
-    order.payments.push(newPayment);
+    // ✅ PUSH PAYMENT
+    order.payments.push(payment);
+    const savedPayment = order.payments[order.payments.length - 1];
 
-    /* 2️⃣ Get or Create Invoice */
-    let invoice = await Invoice.findOne({ orderId });
+    const paidTillNow = paidBefore + amount;
+    const sale = Number(order.saleAmount || order.finalSalePrice || 0);
+    const balanceDue = Math.max(0, sale - paidTillNow);
 
-    if (!invoice) {
-      invoice = await Invoice.create({
-        orderId,
-        totalAmount: Number(order.totalAmount) || 0,
-        paidAmount: amount,
-        dueAmount: (Number(order.totalAmount) || 0) - amount,
-      });
-    } else {
-      // Avoid NaN issues
-      invoice.totalAmount = Number(invoice.totalAmount) || 0;
-      invoice.paidAmount = Number(invoice.paidAmount) || 0;
-
-      invoice.paidAmount += amount;
-      invoice.dueAmount = invoice.totalAmount - invoice.paidAmount;
-
-      await invoice.save();
-    }
-
-    /* 3️⃣ Add Transaction */
-
-    /* 4️⃣ Update Order Amounts */
-    order.paid = invoice.paidAmount;
-    order.due = invoice.dueAmount;
-
+    order.paid = paidTillNow;
+    order.due = balanceDue;
     order.paymentStatus =
-      invoice.dueAmount === 0
-        ? "paid"
-        : invoice.paidAmount > 0
-        ? "partial"
-        : "due";
+      balanceDue === 0 ? "paid" : paidTillNow > 0 ? "partial" : "due";
+
+    // ✅ CREATE RECEIPT
+    const receipt = await Receipt.create({
+      orderId: order._id,
+      paymentId: savedPayment._id,
+      receiptNo: await genReceiptNo(),
+      amount,
+      mode,
+      note,
+      receivedBy: req.user._id,
+      paidTillNow,
+      balanceDue,
+    });
+
+    // ✅ LINK RECEIPT BACK TO PAYMENT
+    savedPayment.receiptId = receipt._id;
 
     await order.save();
 
     res.json({
       success: true,
-      message: "Payment added successfully",
-      order,
-      invoice,
+      message: "Payment & Receipt created",
+      data: { order, receipt },
     });
   } catch (err) {
-    console.error("❌ Add Payment Error:", err);
     next(err);
   }
 }
 
 async function editPayment(req, res, next) {
   try {
-    const orderId = req.params.orderId;
-    const paymentId = req.params.paymentId;
-    const { amount, method = "cash", note = "", type = "payment" } = req.body;
+    const { orderId, paymentId } = req.params;
+    const { amount, method, note, type } = req.body;
 
     const order = await Order.findById(orderId);
     if (!order) {
@@ -731,7 +807,6 @@ async function editPayment(req, res, next) {
       });
     }
 
-    // find the payment inside order.payments
     const payment = order.payments.id(paymentId);
     if (!payment) {
       return res.status(404).json({
@@ -740,28 +815,34 @@ async function editPayment(req, res, next) {
       });
     }
 
-    // update fields
-    payment.amount = amount;
-    payment.method = method;
-    payment.note = note;
-    payment.type = type;
-    payment.updatedAt = new Date();
+    if (amount !== undefined) payment.amount = Number(amount);
+    if (method !== undefined) payment.method = method;
+    if (note !== undefined) payment.note = note;
+    if (type !== undefined) payment.type = type;
+
+    const paid = order.payments.reduce((s, p) => s + Number(p.amount || 0), 0);
+
+    const sale = Number(order.saleAmount || 0);
+    const due = Math.max(0, sale - paid);
+
+    order.paid = paid;
+    order.due = due;
+    order.paymentStatus = due === 0 ? "paid" : paid > 0 ? "partial" : "due";
 
     await order.save();
 
-    console.log("✏️ Payment updated:", paymentId);
-
-    res.json({ success: true, data: order });
+    res.json({
+      success: true,
+      data: order,
+    });
   } catch (err) {
-    console.error("❌ Edit Payment Error:", err);
     next(err);
   }
 }
 
 async function deletePayment(req, res, next) {
   try {
-    const orderId = req.params.orderId;
-    const paymentId = req.params.paymentId;
+    const { orderId, paymentId } = req.params;
 
     const order = await Order.findById(orderId);
     if (!order) {
@@ -779,19 +860,24 @@ async function deletePayment(req, res, next) {
       });
     }
 
-    // remove payment
     payment.deleteOne();
-    await order.save();
 
-    console.log("🗑️ Payment deleted:", paymentId);
+    const paid = order.payments.reduce((s, p) => s + Number(p.amount || 0), 0);
+
+    const sale = Number(order.saleAmount || 0);
+    const due = Math.max(0, sale - paid);
+
+    order.paid = paid;
+    order.due = due;
+    order.paymentStatus = due === 0 ? "paid" : paid > 0 ? "partial" : "due";
+
+    await order.save();
 
     res.json({
       success: true,
-      message: "Payment deleted",
       data: order,
     });
   } catch (err) {
-    console.error("❌ Delete Payment Error:", err);
     next(err);
   }
 }

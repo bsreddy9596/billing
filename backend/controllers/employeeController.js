@@ -2,9 +2,9 @@ const User = require("../models/User");
 const EmployeeLedger = require("../models/EmployeeLedger");
 const logger = require("../config/logger");
 
-/* -------------------------------------------------------------------------- */
-/* 🧾 Get All Employees (Admin Only)                                          */
-/* -------------------------------------------------------------------------- */
+/* =========================================================
+   👥 GET ALL EMPLOYEES (ADMIN ONLY)
+========================================================= */
 const getEmployees = async (req, res, next) => {
   try {
     const employees = await User.find({ role: "employee" })
@@ -12,22 +12,20 @@ const getEmployees = async (req, res, next) => {
       .sort({ createdAt: -1 })
       .lean();
 
-    logger.info(`👥 Employees fetched by Admin: ${req.user._id}`);
-
     res.status(200).json({
       success: true,
       count: employees.length,
       data: employees,
     });
   } catch (err) {
-    logger.error(`❌ Error fetching employees: ${err.message}`);
+    logger.error(`❌ Get employees error: ${err.message}`);
     next(err);
   }
 };
 
-/* -------------------------------------------------------------------------- */
-/* ➕ Create Employee (Admin Only)                                            */
-/* -------------------------------------------------------------------------- */
+/* =========================================================
+   ➕ CREATE EMPLOYEE (ADMIN ONLY)
+========================================================= */
 const createEmployee = async (req, res, next) => {
   try {
     const { name, phone, email, password } = req.body;
@@ -35,7 +33,7 @@ const createEmployee = async (req, res, next) => {
     if (!name || !phone || !password) {
       return res.status(400).json({
         success: false,
-        message: "Name, phone, and password required",
+        message: "Name, phone and password required",
       });
     }
 
@@ -46,7 +44,6 @@ const createEmployee = async (req, res, next) => {
         .json({ success: false, message: "Employee already exists" });
     }
 
-    // Generate employee code
     const employeeCode = `EMP${Math.floor(10000 + Math.random() * 90000)}`;
 
     const employee = new User({
@@ -62,17 +59,15 @@ const createEmployee = async (req, res, next) => {
     await employee.setPassword(password);
     await employee.save();
 
-    logger.info(`✅ Employee created: ${employee.phone}`);
-
     res.status(201).json({
       success: true,
-      message: "Employee created successfully",
+      message: "Employee created",
       data: {
         id: employee._id,
         name: employee.name,
         phone: employee.phone,
-        code: employee.employeeCode,
-        password, // return once
+        employeeCode,
+        password, // return once only
       },
     });
   } catch (err) {
@@ -81,22 +76,44 @@ const createEmployee = async (req, res, next) => {
   }
 };
 
-/* -------------------------------------------------------------------------- */
-/* 💰 Add Ledger Entry                                                        */
-/* -------------------------------------------------------------------------- */
+/* =========================================================
+   💰 ADD LEDGER ENTRY (ADMIN ONLY)
+========================================================= */
 const addLedgerEntry = async (req, res, next) => {
   try {
-    const { employeeId, type, amount, note } = req.body;
+    if (req.user.role !== "admin") {
+      return res.status(403).json({
+        success: false,
+        message: "Only admin can add ledger entries",
+      });
+    }
 
-    if (!employeeId || !type || !amount) {
+    const { employeeId, type, amount, note = "" } = req.body;
+
+    if (!employeeId || !type || amount === undefined) {
       return res.status(400).json({
         success: false,
-        message: "employeeId, type & amount required",
+        message: "employeeId, type and amount required",
+      });
+    }
+
+    if (!["credit", "debit"].includes(type)) {
+      return res.status(400).json({
+        success: false,
+        message: "Type must be credit or debit",
+      });
+    }
+
+    const amt = Number(amount);
+    if (isNaN(amt) || amt <= 0) {
+      return res.status(400).json({
+        success: false,
+        message: "Amount must be a valid number",
       });
     }
 
     const employee = await User.findById(employeeId);
-    if (!employee) {
+    if (!employee || employee.role !== "employee") {
       return res.status(404).json({
         success: false,
         message: "Employee not found",
@@ -106,16 +123,14 @@ const addLedgerEntry = async (req, res, next) => {
     const entry = await EmployeeLedger.create({
       employeeId,
       type,
-      amount,
-      note: note || "",
+      amount: amt,
+      note,
       createdBy: req.user._id,
     });
 
-    logger.info(`💰 Ledger entry added for employee: ${employee.phone}`);
-
     res.status(201).json({
       success: true,
-      message: "Ledger entry added successfully",
+      message: "Ledger entry added",
       data: entry,
     });
   } catch (err) {
@@ -124,15 +139,15 @@ const addLedgerEntry = async (req, res, next) => {
   }
 };
 
-/* -------------------------------------------------------------------------- */
-/* 📊 Get Employee Ledger                                                     */
-/* -------------------------------------------------------------------------- */
+/* =========================================================
+   📊 GET EMPLOYEE LEDGER (ADMIN ONLY)
+========================================================= */
 const getEmployeeLedger = async (req, res, next) => {
   try {
     const employeeId = req.params.id;
 
     const employee = await User.findById(employeeId).lean();
-    if (!employee) {
+    if (!employee || employee.role !== "employee") {
       return res.status(404).json({
         success: false,
         message: "Employee not found",
@@ -144,15 +159,13 @@ const getEmployeeLedger = async (req, res, next) => {
       .lean();
 
     const summary = ledger.reduce(
-      (acc, entry) => {
-        if (entry.type === "credit") acc.credit += entry.amount;
-        if (entry.type === "debit") acc.debit += entry.amount;
+      (acc, e) => {
+        if (e.type === "credit") acc.credit += e.amount;
+        if (e.type === "debit") acc.debit += e.amount;
         return acc;
       },
       { credit: 0, debit: 0 }
     );
-
-    const balance = summary.credit - summary.debit;
 
     res.status(200).json({
       success: true,
@@ -165,7 +178,7 @@ const getEmployeeLedger = async (req, res, next) => {
       summary: {
         totalCredit: summary.credit,
         totalDebit: summary.debit,
-        balance,
+        balance: summary.credit - summary.debit,
       },
       data: ledger,
     });
@@ -175,136 +188,32 @@ const getEmployeeLedger = async (req, res, next) => {
   }
 };
 
-/* -------------------------------------------------------------------------- */
-/* ❌ Delete Employee                                                         */
-/* -------------------------------------------------------------------------- */
-const deleteEmployee = async (req, res, next) => {
-  try {
-    const employee = await User.findById(req.params.id);
-
-    if (!employee) {
-      return res
-        .status(404)
-        .json({ success: false, message: "Employee not found" });
-    }
-
-    if (employee.role === "admin") {
-      return res.status(403).json({
-        success: false,
-        message: "Admin cannot be deleted",
-      });
-    }
-
-    await EmployeeLedger.deleteMany({ employeeId: employee._id });
-    await User.findByIdAndDelete(employee._id);
-
-    logger.warn(`🗑️ Employee deleted: ${employee.phone}`);
-
-    res.status(200).json({
-      success: true,
-      message: `Employee ${employee.name} deleted successfully`,
-    });
-  } catch (err) {
-    logger.error(`❌ Delete employee error: ${err.message}`);
-    next(err);
-  }
-};
-
-/* -------------------------------------------------------------------------- */
-/* ✏️ Edit Ledger Entry (Admin Only)                                          */
-/* -------------------------------------------------------------------------- */
-const updateLedgerEntry = async (req, res, next) => {
-  try {
-    const { id } = req.params; // ledger entry ID
-    const { type, amount, note } = req.body;
-
-    const entry = await EmployeeLedger.findById(id);
-    if (!entry)
-      return res
-        .status(404)
-        .json({ success: false, message: "Entry not found" });
-
-    entry.type = type || entry.type;
-    entry.amount = amount || entry.amount;
-    entry.note = note || entry.note;
-
-    await entry.save();
-
-    res.status(200).json({
-      success: true,
-      message: "Ledger entry updated",
-      data: entry,
-    });
-  } catch (err) {
-    next(err);
-  }
-};
-
-/* -------------------------------------------------------------------------- */
-/* ❌ Delete Ledger Entry (Admin Only)                                        */
-/* -------------------------------------------------------------------------- */
-const removeLedgerEntry = async (req, res, next) => {
-  try {
-    const { id } = req.params; // ledger entry ID
-
-    const entry = await EmployeeLedger.findById(id);
-    if (!entry)
-      return res
-        .status(404)
-        .json({ success: false, message: "Entry not found" });
-
-    await entry.deleteOne();
-
-    res.status(200).json({
-      success: true,
-      message: "Ledger entry deleted",
-    });
-  } catch (err) {
-    next(err);
-  }
-};
-/* -------------------------------------------------------------------------- */
-/* 👤 Get My Ledger (Employee Only)                                           */
-/* -------------------------------------------------------------------------- */
+/* =========================================================
+   👤 GET MY LEDGER (EMPLOYEE ONLY)
+========================================================= */
 const getMyLedger = async (req, res, next) => {
   try {
     const employeeId = req.user._id;
-
-    const employee = await User.findById(employeeId).lean();
-    if (!employee) {
-      return res.status(404).json({
-        success: false,
-        message: "Employee not found",
-      });
-    }
 
     const ledger = await EmployeeLedger.find({ employeeId })
       .sort({ createdAt: -1 })
       .lean();
 
     const summary = ledger.reduce(
-      (acc, entry) => {
-        if (entry.type === "credit") acc.credit += entry.amount;
-        if (entry.type === "debit") acc.debit += entry.amount;
+      (acc, e) => {
+        if (e.type === "credit") acc.credit += e.amount;
+        if (e.type === "debit") acc.debit += e.amount;
         return acc;
       },
       { credit: 0, debit: 0 }
     );
 
-    const balance = summary.credit - summary.debit;
-
     res.status(200).json({
       success: true,
-      employee: {
-        id: employee._id,
-        name: employee.name,
-        phone: employee.phone,
-        employeeCode: employee.employeeCode,
-      },
       summary: {
         totalCredit: summary.credit,
         totalDebit: summary.debit,
-        balance,
+        balance: summary.credit - summary.debit,
       },
       data: ledger,
     });
@@ -314,14 +223,85 @@ const getMyLedger = async (req, res, next) => {
   }
 };
 
-/* -------------------------------------------------------------------------- */
+/* =========================================================
+   ✏️ EDIT LEDGER ENTRY (ADMIN ONLY)
+========================================================= */
+const updateLedgerEntry = async (req, res, next) => {
+  try {
+    if (req.user.role !== "admin") {
+      return res.status(403).json({
+        success: false,
+        message: "Only admin can edit ledger entries",
+      });
+    }
+
+    const { id } = req.params;
+    const { type, amount, note } = req.body;
+
+    const entry = await EmployeeLedger.findById(id);
+    if (!entry) {
+      return res.status(404).json({
+        success: false,
+        message: "Ledger entry not found",
+      });
+    }
+
+    if (type && ["credit", "debit"].includes(type)) entry.type = type;
+    if (amount !== undefined) entry.amount = Number(amount) || entry.amount;
+    if (note !== undefined) entry.note = note;
+
+    await entry.save();
+
+    res.json({
+      success: true,
+      message: "Ledger entry updated",
+      data: entry,
+    });
+  } catch (err) {
+    logger.error(`❌ Update ledger entry error: ${err.message}`);
+    next(err);
+  }
+};
+
+/* =========================================================
+   ❌ DELETE LEDGER ENTRY (ADMIN ONLY)
+========================================================= */
+const removeLedgerEntry = async (req, res, next) => {
+  try {
+    if (req.user.role !== "admin") {
+      return res.status(403).json({
+        success: false,
+        message: "Only admin can delete ledger entries",
+      });
+    }
+
+    const entry = await EmployeeLedger.findById(req.params.id);
+    if (!entry) {
+      return res.status(404).json({
+        success: false,
+        message: "Ledger entry not found",
+      });
+    }
+
+    await entry.deleteOne();
+
+    res.json({
+      success: true,
+      message: "Ledger entry deleted",
+    });
+  } catch (err) {
+    logger.error(`❌ Delete ledger entry error: ${err.message}`);
+    next(err);
+  }
+};
+
+/* ========================================================= */
 module.exports = {
   getEmployees,
   createEmployee,
   addLedgerEntry,
   getEmployeeLedger,
-  deleteEmployee,
+  getMyLedger,
   updateLedgerEntry,
   removeLedgerEntry,
-  getMyLedger,
 };

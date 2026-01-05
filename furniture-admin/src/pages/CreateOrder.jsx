@@ -1,4 +1,4 @@
-// src/pages/Orders/CreateOrder.jsx  (ADMIN VERSION)
+// src/pages/Orders/CreateOrder.jsx (ADMIN VERSION – FINAL FIXED)
 import React, { useState, useEffect } from "react";
 import toast, { Toaster } from "react-hot-toast";
 import { useNavigate, useSearchParams } from "react-router-dom";
@@ -18,11 +18,15 @@ const newDrawing = () => ({
     measurements: {},
 });
 
-/* INPUT COMPONENT */
+/* ------------------------------------------------------ */
+/* INPUT COMPONENT                                        */
+/* ------------------------------------------------------ */
 function Input({ label, value, onChange, type = "text" }) {
     return (
         <div className="w-full">
-            <label className="block text-sm font-medium text-gray-700">{label}</label>
+            <label className="block text-sm font-medium text-gray-700">
+                {label}
+            </label>
             <input
                 type={type}
                 value={value}
@@ -33,11 +37,15 @@ function Input({ label, value, onChange, type = "text" }) {
     );
 }
 
-/* SELECT COMPONENT */
+/* ------------------------------------------------------ */
+/* SELECT COMPONENT                                       */
+/* ------------------------------------------------------ */
 function Select({ label, value, options, onChange }) {
     return (
         <div className="w-full">
-            <label className="block text-sm font-medium text-gray-700">{label}</label>
+            <label className="block text-sm font-medium text-gray-700">
+                {label}
+            </label>
             <select
                 value={value}
                 onChange={(e) => onChange(e.target.value)}
@@ -45,7 +53,7 @@ function Select({ label, value, options, onChange }) {
             >
                 {options.map((o) => (
                     <option key={o} value={o}>
-                        {String(o)}
+                        {o}
                     </option>
                 ))}
             </select>
@@ -60,7 +68,7 @@ export default function CreateOrder() {
     const navigate = useNavigate();
     const [params] = useSearchParams();
 
-    const editId = params.get("edit"); // ⭐ ADMIN EDIT MODE
+    const editId = params.get("edit"); // ADMIN EDIT MODE
 
     const [customerName, setCustomerName] = useState("");
     const [customerPhone, setCustomerPhone] = useState("");
@@ -69,7 +77,7 @@ export default function CreateOrder() {
     const [saving, setSaving] = useState(false);
 
     /* ------------------------------------------------------ */
-    /* LOAD ORDER FOR ADMIN EDIT MODE                         */
+    /* LOAD ORDER (ADMIN EDIT MODE)                           */
     /* ------------------------------------------------------ */
     useEffect(() => {
         if (!editId) return;
@@ -83,11 +91,11 @@ export default function CreateOrder() {
                 setCustomerPhone(o.customerPhone || "");
                 setCustomerAddress(o.customerAddress || "");
 
-                if (o.drawings?.length > 0) {
+                if (o.drawings?.length) {
                     setDrawings(
                         o.drawings.map((d) => ({
-                            itemType: d.itemType,
-                            name: d.name,
+                            itemType: d.itemType || "SOFA",
+                            name: d.name || "",
                             notes: d.notes || "",
                             drawingUrl: d.drawingUrl || "",
                             measurements: d.measurements || {},
@@ -105,10 +113,12 @@ export default function CreateOrder() {
     }, [editId]);
 
     /* ------------------------------------------------------ */
-    /* DRAWINGS HANDLERS                                      */
+    /* DRAWING HELPERS                                       */
     /* ------------------------------------------------------ */
     const addDrawing = () => setDrawings([...drawings, newDrawing()]);
-    const removeDrawing = (i) => setDrawings(drawings.filter((_, idx) => idx !== i));
+
+    const removeDrawing = (i) =>
+        setDrawings(drawings.filter((_, idx) => idx !== i));
 
     const updateDrawing = (i, key, value) => {
         const list = [...drawings];
@@ -116,8 +126,12 @@ export default function CreateOrder() {
         setDrawings(list);
     };
 
+    /* ------------------------------------------------------ */
+    /* IMAGE UPLOAD (SAFE + FIXED)                            */
+    /* ------------------------------------------------------ */
     const uploadImage = async (i, file) => {
         if (!file) return;
+
         try {
             const data = new FormData();
             data.append("file", file);
@@ -125,9 +139,10 @@ export default function CreateOrder() {
             const res = await api.post("/upload", data);
             let url = res.data.url;
 
-            // force absolute URL
+            // Convert to absolute URL if needed
             if (!url.startsWith("http")) {
-                const base = import.meta.env.VITE_API_URL?.replace("/api", "") || "";
+                const base =
+                    import.meta.env.VITE_API_URL?.replace("/api", "") || "";
                 url = base + url;
             }
 
@@ -135,16 +150,19 @@ export default function CreateOrder() {
             toast.success("Image uploaded");
         } catch (err) {
             console.error(err);
-            toast.error("Upload failed");
+            toast.error("Image upload failed");
         }
     };
 
     /* ------------------------------------------------------ */
-    /* ⭐ SAVE ORDER (CREATE or ADMIN UPDATE — ANY STATUS)     */
+    /* SAVE ORDER (CREATE / ADMIN UPDATE)                     */
     /* ------------------------------------------------------ */
     const saveOrder = async () => {
-        if (!customerName.trim()) return toast.error("Customer name required");
-        if (!drawings[0].name.trim()) return toast.error("First drawing name required");
+        if (!customerName.trim())
+            return toast.error("Customer name required");
+
+        if (!drawings[0]?.name.trim())
+            return toast.error("First sketch name required");
 
         setSaving(true);
 
@@ -164,17 +182,14 @@ export default function CreateOrder() {
 
         try {
             if (editId) {
-                // ⭐ ADMIN → bypass ALL backend restrictions
                 await api.put(`/orders/${editId}?override=admin`, payload);
-
-                toast.success("Order updated successfully!");
+                toast.success("Order updated successfully");
             } else {
                 await api.post("/orders", payload);
-                toast.success("Order created successfully!");
+                toast.success("Order created successfully");
             }
 
             navigate("/orders");
-
         } catch (err) {
             console.error(err);
             toast.error(err.response?.data?.message || "Save failed");
@@ -184,24 +199,37 @@ export default function CreateOrder() {
     };
 
     /* ------------------------------------------------------ */
-    /* UI RENDERING                                            */
+    /* UI                                                     */
     /* ------------------------------------------------------ */
     return (
         <div className="p-4 md:p-6">
             <Toaster />
+
             <h1 className="text-2xl font-bold mb-6">
                 {editId ? "Edit Order (Admin)" : "Create Order (Admin)"}
             </h1>
 
             <div className="bg-white p-5 rounded-xl border shadow-md space-y-6">
-                {/* Customer Inputs */}
+                {/* CUSTOMER DETAILS */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                    <Input label="Customer Name" value={customerName} onChange={setCustomerName} />
-                    <Input label="Phone Number" value={customerPhone} onChange={setCustomerPhone} />
-                    <Input label="Address" value={customerAddress} onChange={setCustomerAddress} />
+                    <Input
+                        label="Customer Name"
+                        value={customerName}
+                        onChange={setCustomerName}
+                    />
+                    <Input
+                        label="Phone Number"
+                        value={customerPhone}
+                        onChange={setCustomerPhone}
+                    />
+                    <Input
+                        label="Address"
+                        value={customerAddress}
+                        onChange={setCustomerAddress}
+                    />
                 </div>
 
-                {/* DRAWING CARDS */}
+                {/* DRAWINGS */}
                 {drawings.map((d, idx) => (
                     <div key={idx} className="bg-gray-50 p-4 rounded-xl border">
                         <div className="flex justify-between items-center">
@@ -221,14 +249,29 @@ export default function CreateOrder() {
                             <Select
                                 label="Item Type"
                                 value={d.itemType}
-                                options={["SOFA", "L-SHAPE", "BED", "CHAIR", "TABLE", "CUSTOM"]}
+                                options={[
+                                    "SOFA",
+                                    "L-SHAPE",
+                                    "BED",
+                                    "CHAIR",
+                                    "TABLE",
+                                    "CUSTOM",
+                                ]}
                                 onChange={(v) => updateDrawing(idx, "itemType", v)}
                             />
-                            <Input label="Model / Name" value={d.name} onChange={(v) => updateDrawing(idx, "name", v)} />
-                            <Input label="Notes" value={d.notes} onChange={(v) => updateDrawing(idx, "notes", v)} />
+                            <Input
+                                label="Model / Name"
+                                value={d.name}
+                                onChange={(v) => updateDrawing(idx, "name", v)}
+                            />
+                            <Input
+                                label="Notes"
+                                value={d.notes}
+                                onChange={(v) => updateDrawing(idx, "notes", v)}
+                            />
                         </div>
 
-                        {/* Upload Image */}
+                        {/* IMAGE UPLOAD */}
                         <div className="flex flex-wrap gap-3 mt-4 items-center">
                             <label className="cursor-pointer flex items-center gap-2 px-4 py-2 rounded bg-teal-50 text-teal-700">
                                 <ImageIcon size={16} /> Upload Image
@@ -236,22 +279,27 @@ export default function CreateOrder() {
                                     type="file"
                                     accept="image/*"
                                     className="hidden"
-                                    onChange={(e) => uploadImage(idx, e.target.files[0])}
+                                    onChange={(e) => {
+                                        const file = e.target.files?.[0];
+                                        if (!file) return;
+                                        uploadImage(idx, file);
+                                        e.target.value = ""; // ⭐ IMPORTANT RESET
+                                    }}
                                 />
                             </label>
 
                             {d.drawingUrl && (
                                 <img
                                     src={d.drawingUrl}
-                                    className="border w-24 h-20 rounded object-cover"
                                     alt={`sketch-${idx}`}
+                                    className="border w-24 h-20 rounded object-cover"
                                 />
                             )}
                         </div>
                     </div>
                 ))}
 
-                {/* Add New Sketch */}
+                {/* ADD SKETCH */}
                 <button
                     onClick={addDrawing}
                     className="flex items-center gap-2 px-4 py-2 rounded bg-teal-50 text-teal-700"
@@ -259,14 +307,19 @@ export default function CreateOrder() {
                     <Plus size={16} /> Add Sketch
                 </button>
 
-                {/* SAVE BUTTON */}
+                {/* SAVE */}
                 <div className="flex justify-end mt-4">
                     <button
                         onClick={saveOrder}
-                        className="flex items-center gap-2 px-6 py-3 rounded bg-green-600 text-white"
+                        disabled={saving}
+                        className="flex items-center gap-2 px-6 py-3 rounded bg-green-600 text-white disabled:opacity-60"
                     >
                         <Save size={18} />
-                        {saving ? "Saving..." : editId ? "Update Order" : "Save Order"}
+                        {saving
+                            ? "Saving..."
+                            : editId
+                                ? "Update Order"
+                                : "Save Order"}
                     </button>
                 </div>
             </div>

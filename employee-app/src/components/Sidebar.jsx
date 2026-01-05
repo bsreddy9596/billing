@@ -8,6 +8,8 @@ import {
     LayoutDashboard,
     LogOut,
     BookOpen,
+    Zap,
+    AlertCircle,
 } from "lucide-react";
 
 export default function Sidebar({ open, setOpen }) {
@@ -15,7 +17,6 @@ export default function Sidebar({ open, setOpen }) {
 
     const employeeToken = localStorage.getItem("employeeToken");
     const adminToken = localStorage.getItem("adminToken");
-    const role = localStorage.getItem("role"); // "admin" | "employee"
 
     if (!employeeToken && !adminToken) return null;
 
@@ -37,7 +38,6 @@ export default function Sidebar({ open, setOpen }) {
 
     return (
         <>
-            {/* MOBILE OVERLAY */}
             {open && (
                 <div
                     className="fixed inset-0 bg-black/40 z-40 lg:hidden"
@@ -45,14 +45,12 @@ export default function Sidebar({ open, setOpen }) {
                 />
             )}
 
-            {/* SIDEBAR */}
             <aside
                 className={`fixed top-[64px] left-0 z-50
                 h-[calc(100vh-64px)] w-64 bg-white shadow-xl border-r
                 transform transition-transform duration-300 ease-in-out
                 ${open ? "translate-x-0" : "-translate-x-full lg:translate-x-0"}`}
             >
-                {/* CLOSE (MOBILE) */}
                 <button
                     onClick={() => setOpen(false)}
                     className="absolute top-3 right-3 text-gray-600 lg:hidden"
@@ -61,7 +59,6 @@ export default function Sidebar({ open, setOpen }) {
                 </button>
 
                 <nav className="px-5 py-4 flex flex-col h-full justify-between">
-                    {/* TOP MENU */}
                     <div className="space-y-2">
                         <p className="text-xs font-semibold text-gray-400 mb-2">
                             MENU
@@ -82,6 +79,25 @@ export default function Sidebar({ open, setOpen }) {
                             Billing
                         </NavLink>
 
+                        <NavLink
+                            to="/billing/quick"
+                            onClick={() => setOpen(false)}
+                            className={linkClass}
+                        >
+                            <Zap size={18} />
+                            Quick Billing
+                        </NavLink>
+
+                        {/* ✅ DUE INVOICES */}
+                        <NavLink
+                            to="/dues"
+                            onClick={() => setOpen(false)}
+                            className={linkClass}
+                        >
+                            <AlertCircle size={18} />
+                            Due Invoices
+                        </NavLink>
+
                         <NavLink to="/products" onClick={() => setOpen(false)} className={linkClass}>
                             <Package size={18} />
                             Products
@@ -92,14 +108,12 @@ export default function Sidebar({ open, setOpen }) {
                             Materials
                         </NavLink>
 
-                        {/* ⭐ EMPLOYEE LEDGER */}
                         <NavLink to="/ledger" onClick={() => setOpen(false)} className={linkClass}>
                             <BookOpen size={18} />
                             Ledger
                         </NavLink>
                     </div>
 
-                    {/* LOGOUT */}
                     <button
                         onClick={logout}
                         className="flex items-center gap-3 px-3 py-2 rounded-lg

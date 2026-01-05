@@ -1,12 +1,21 @@
-import { Navigate, Outlet } from "react-router-dom";
+import { Navigate, Outlet, useLocation } from "react-router-dom";
 
 export default function PrivateRoute() {
-    const token =
-        localStorage.getItem("employeeToken") ||
-        localStorage.getItem("adminToken");
+    const location = useLocation();
+
+    const employeeToken = localStorage.getItem("employeeToken");
+    const adminToken = localStorage.getItem("adminToken");
+
+    const token = employeeToken || adminToken;
 
     if (!token) {
-        return <Navigate to="/login" replace />;
+        return (
+            <Navigate
+                to="/login"
+                replace
+                state={{ from: location.pathname }}
+            />
+        );
     }
 
     return <Outlet />;

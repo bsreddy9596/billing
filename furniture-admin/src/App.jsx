@@ -1,8 +1,11 @@
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "./context/AuthContext";
+
 import PrivateRoute from "./components/PrivateRoute";
+import AdminRoute from "./components/AdminRoute";
 import MainLayout from "./layout/MainLayout";
 
+/* ================= PAGES ================= */
 import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
 import Analytics from "./pages/Analytics";
@@ -17,8 +20,15 @@ import EmployeeLedger from "./pages/EmployeeLedger";
 import Materials from "./pages/Materials";
 import Settings from "./pages/Settings";
 
-import BillingList from "./pages/BillingList";
 import BillingForm from "./pages/BillingForm";
+
+import InvoicePreview from "./pages/InvoicePreview";
+import ProductInvoicePreview from "./pages/ProductInvoicePreview";
+import InvoiceList from "./pages/InvoiceList";
+import DueInvoices from "./pages/DueInvoices";
+
+import Receipts from "./pages/Receipts";
+import ReceiptPreview from "./pages/ReceiptPreview";
 
 export default function App() {
   return (
@@ -26,10 +36,10 @@ export default function App() {
       <AuthProvider>
         <Routes>
 
-          {/* PUBLIC ROUTES */}
+          {/* ================= PUBLIC ================= */}
           <Route path="/login" element={<Login />} />
 
-          {/* DASHBOARD */}
+          {/* ================= DASHBOARD ================= */}
           <Route
             path="/"
             element={
@@ -41,19 +51,60 @@ export default function App() {
             }
           />
 
-          {/* ANALYTICS */}
+          {/* ================= ADMIN ONLY ================= */}
           <Route
             path="/analytics"
             element={
               <PrivateRoute>
-                <MainLayout>
-                  <Analytics />
-                </MainLayout>
+                <AdminRoute>
+                  <MainLayout>
+                    <Analytics />
+                  </MainLayout>
+                </AdminRoute>
               </PrivateRoute>
             }
           />
 
-          {/* ORDERS LIST */}
+          <Route
+            path="/employees"
+            element={
+              <PrivateRoute>
+                <AdminRoute>
+                  <MainLayout>
+                    <EmployeeList />
+                  </MainLayout>
+                </AdminRoute>
+              </PrivateRoute>
+            }
+          />
+
+          <Route
+            path="/settings"
+            element={
+              <PrivateRoute>
+                <AdminRoute>
+                  <MainLayout>
+                    <Settings />
+                  </MainLayout>
+                </AdminRoute>
+              </PrivateRoute>
+            }
+          />
+
+          <Route
+            path="/admin/receipts"
+            element={
+              <PrivateRoute>
+                <AdminRoute>
+                  <MainLayout>
+                    <Receipts />
+                  </MainLayout>
+                </AdminRoute>
+              </PrivateRoute>
+            }
+          />
+
+          {/* ================= ORDERS ================= */}
           <Route
             path="/orders"
             element={
@@ -65,19 +116,6 @@ export default function App() {
             }
           />
 
-          {/* CREATE OR EDIT ORDER */}
-          <Route
-            path="/createorder"
-            element={
-              <PrivateRoute>
-                <MainLayout>
-                  <CreateOrder />
-                </MainLayout>
-              </PrivateRoute>
-            }
-          />
-
-          {/* ORDER DETAILS */}
           <Route
             path="/orders/:id"
             element={
@@ -89,7 +127,18 @@ export default function App() {
             }
           />
 
-          {/* PRODUCTS */}
+          <Route
+            path="/createorder"
+            element={
+              <PrivateRoute>
+                <MainLayout>
+                  <CreateOrder />
+                </MainLayout>
+              </PrivateRoute>
+            }
+          />
+
+          {/* ================= PRODUCTS ================= */}
           <Route
             path="/products"
             element={
@@ -101,30 +150,7 @@ export default function App() {
             }
           />
 
-          {/* EMPLOYEES */}
-          <Route
-            path="/employees"
-            element={
-              <PrivateRoute>
-                <MainLayout>
-                  <EmployeeList />
-                </MainLayout>
-              </PrivateRoute>
-            }
-          />
-
-          <Route
-            path="/employees/ledger/:id"
-            element={
-              <PrivateRoute>
-                <MainLayout>
-                  <EmployeeLedger />
-                </MainLayout>
-              </PrivateRoute>
-            }
-          />
-
-          {/* MATERIALS */}
+          {/* ================= MATERIALS ================= */}
           <Route
             path="/materials"
             element={
@@ -136,33 +162,7 @@ export default function App() {
             }
           />
 
-          {/* SETTINGS */}
-          <Route
-            path="/settings"
-            element={
-              <PrivateRoute>
-                <MainLayout>
-                  <Settings />
-                </MainLayout>
-              </PrivateRoute>
-            }
-          />
-
-          {/* ⭐ BILLING MODULE ⭐ */}
-
-          {/* BILLING LIST (only bills visible) */}
-          <Route
-            path="/billing"
-            element={
-              <PrivateRoute>
-                <MainLayout>
-                  <BillingList />
-                </MainLayout>
-              </PrivateRoute>
-            }
-          />
-
-          {/* CREATE NEW BILL */}
+          {/* ================= BILLING ================= */}
           <Route
             path="/billing/new"
             element={
@@ -174,13 +174,69 @@ export default function App() {
             }
           />
 
-          {/* VIEW / EDIT BILL */}
           <Route
             path="/billing/:id"
             element={
               <PrivateRoute>
                 <MainLayout>
                   <BillingForm />
+                </MainLayout>
+              </PrivateRoute>
+            }
+          />
+
+          {/* ================= INVOICES ================= */}
+          <Route
+            path="/invoices"
+            element={
+              <PrivateRoute>
+                <MainLayout>
+                  <InvoiceList />
+                </MainLayout>
+              </PrivateRoute>
+            }
+          />
+
+          <Route
+            path="/invoice/order/:id"
+            element={
+              <PrivateRoute>
+                <MainLayout>
+                  <InvoicePreview />
+                </MainLayout>
+              </PrivateRoute>
+            }
+          />
+
+          <Route
+            path="/invoice/product/:id"
+            element={
+              <PrivateRoute>
+                <MainLayout>
+                  <ProductInvoicePreview />
+                </MainLayout>
+              </PrivateRoute>
+            }
+          />
+
+          <Route
+            path="/invoices/due"
+            element={
+              <PrivateRoute>
+                <MainLayout>
+                  <DueInvoices />
+                </MainLayout>
+              </PrivateRoute>
+            }
+          />
+
+          {/* ================= RECEIPTS ================= */}
+          <Route
+            path="/receipts/preview/:id"
+            element={
+              <PrivateRoute>
+                <MainLayout>
+                  <ReceiptPreview />
                 </MainLayout>
               </PrivateRoute>
             }

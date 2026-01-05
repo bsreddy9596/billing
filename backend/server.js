@@ -78,7 +78,7 @@ app.use("/api/notifications", require("./routes/notificationRoutes"));
 app.use("/api/settings", require("./routes/settingsRoutes"));
 app.use("/api/employees", require("./routes/employeeRoutes"));
 app.use("/api/upload", require("./routes/upload"));
-app.use("/api/payments", require("./routes/paymentRoutes"));
+app.use("/api/receipts", require("./routes/receiptRoutes"));
 
 app.use(notFound);
 app.use(errorHandler);
