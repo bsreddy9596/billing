@@ -257,10 +257,54 @@ async function updateMaterial(req, res, next) {
 }
 
 /* -------------------------------------------------------------------------- */
+/* 🗑️ Delete Material (Admin Only)                                           */
+/* -------------------------------------------------------------------------- */
+async function deleteMaterial(req, res, next) {
+  try {
+    const mat = await Material.findById(req.params.id);
+
+    if (!mat) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Material not found" });
+    }
+
+    await mat.deleteOne();
+
+    const io = req.app.get("io");
+
+    io.emit("material-deleted", {
+      materialId: mat._id,
+      name: mat.name,
+    });
+
+    io.emit("analytics-updated");
+
+    await logActivity({
+      userId: req.user._id,
+      action: "MATERIAL_DELETED",
+      targetType: "Material",
+      targetId: mat._id,
+      message: `${mat.name} material deleted`,
+    });
+
+    logger.info(`🗑️ Material deleted: ${mat.name}`);
+
+    res.json({
+      success: true,
+      message: "Material deleted successfully",
+    });
+  } catch (err) {
+    logger.error(`❌ Delete Material Error: ${err.message}`);
+    next(err);
+  }
+}
+
 module.exports = {
   addMaterial,
   getMaterials,
   updatePrice,
   addStock,
   updateMaterial,
+  deleteMaterial,
 };

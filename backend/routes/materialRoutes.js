@@ -3,7 +3,6 @@ const router = express.Router();
 const { protect, checkRole } = require("../middlewares/authMiddleware");
 const materialController = require("../controllers/materialController");
 
-/* ADD MATERIAL — admin + employee */
 router.post(
   "/",
   protect,
@@ -11,7 +10,6 @@ router.post(
   materialController.addMaterial
 );
 
-/* GET MATERIALS — admin + employee */
 router.get(
   "/",
   protect,
@@ -19,15 +17,13 @@ router.get(
   materialController.getMaterials
 );
 
-/* ✏️ FULL MATERIAL UPDATE — admin only */
 router.put(
   "/:id",
   protect,
   checkRole("admin"),
-  materialController.updateMaterial // <-- REQUIRED
+  materialController.updateMaterial
 );
 
-/* UPDATE PRICE ONLY — admin only */
 router.put(
   "/:id/price",
   protect,
@@ -35,12 +31,18 @@ router.put(
   materialController.updatePrice
 );
 
-/* ADD STOCK — admin + employee */
 router.put(
   "/:id/add-stock",
   protect,
   checkRole("admin", "employee"),
   materialController.addStock
+);
+
+router.delete(
+  "/:id",
+  protect,
+  checkRole("admin"),
+  materialController.deleteMaterial
 );
 
 module.exports = router;
