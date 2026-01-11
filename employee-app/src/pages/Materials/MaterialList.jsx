@@ -1,4 +1,3 @@
-// src/pages/Materials/MaterialList.jsx
 import React, { useEffect, useState } from "react";
 import api from "../../api/api";
 import { Plus, Pencil, Trash2, X } from "lucide-react";
@@ -8,78 +7,71 @@ export default function MaterialList() {
     const [materials, setMaterials] = useState([]);
     const [loading, setLoading] = useState(true);
 
-    // Modal State
+    // Modal state
     const [showModal, setShowModal] = useState(false);
     const [editMode, setEditMode] = useState(false);
     const [currentId, setCurrentId] = useState(null);
 
-    // Form Fields
+    // Form fields
     const [name, setName] = useState("");
-    const [quality, setQuality] = useState("");
-    const [unit, setUnit] = useState("pcs");
+    const [unit, setUnit] = useState(""); // Quality / Unit
     const [qty, setQty] = useState("");
-    const [description, setDescription] = useState("");
 
     const user = JSON.parse(localStorage.getItem("employeeUser") || "{}");
-    const role = user.role || "employee"; // default employee
+    const role = user.role || "employee";
 
     useEffect(() => {
         fetchMaterials();
     }, []);
 
+    /* ---------------- FETCH MATERIALS ---------------- */
     const fetchMaterials = async () => {
         try {
             setLoading(true);
             const res = await api.get("/materials");
             setMaterials(res.data.data || []);
         } catch (err) {
-            console.log("Failed to load materials");
+            toast.error("Failed to load materials");
         } finally {
             setLoading(false);
         }
     };
 
-    /* ---------------------- OPEN ADD MATERIAL ---------------------- */
+    /* ---------------- ADD MODAL ---------------- */
     const openAddModal = () => {
         setEditMode(false);
         setCurrentId(null);
         setName("");
-        setQuality("");
-        setUnit("pcs");
+        setUnit("");
         setQty("");
-        setDescription("");
         setShowModal(true);
     };
 
-    /* ---------------------- OPEN EDIT MATERIAL ---------------------- */
+    /* ---------------- EDIT MODAL ---------------- */
     const openEditModal = (mat) => {
         setEditMode(true);
         setCurrentId(mat._id);
         setName(mat.name);
-        setQuality(mat.quality);
         setUnit(mat.unit);
         setQty(mat.availableQty);
-        setDescription(mat.description || "");
         setShowModal(true);
     };
 
-    /* ---------------------- SAVE MATERIAL ---------------------- */
+    /* ---------------- SAVE MATERIAL ---------------- */
     const saveMaterial = async () => {
         if (!name.trim()) return toast.error("Enter material name");
-        if (!quality.trim()) return toast.error("Enter quality (12mm, 18mm etc.)");
+        if (!unit.trim()) return toast.error("Enter quality / unit");
         if (!qty || qty <= 0) return toast.error("Enter valid quantity");
 
         try {
             await api.post("/materials", {
                 name,
-                quality,
-                unit,
+                unit,               // Quality / Unit
                 availableQty: qty,
-                description,
-                minThreshold: 5
+                minThreshold: 5,
             });
 
-            toast.success("Material added!");
+            toast.success("Material added");
             setShowModal(false);
             fetchMaterials();
         } catch (err) {
@@ -87,23 +79,24 @@ export default function MaterialList() {
         }
     };
 
-    /* ---------------------- UPDATE MATERIAL ---------------------- */
+    /* ---------------- UPDATE MATERIAL ---------------- */
     const updateMaterial = async () => {
         try {
-            // Update quantity (stock)
+            const oldQty =
+                materials.find((m) => m._id === currentId)?.availableQty || 0;
+
+            // Update stock difference
             await api.put(`/materials/${currentId}/add-stock`, {
-                qty: qty - materials.find(m => m._id === currentId).availableQty,
+                qty: qty - oldQty,
             });
 
-            // Update name, quality, unit, description
+            // Update basic fields
             await api.put(`/products/update-material-basic/${currentId}`, {
                 name,
-                quality,
                 unit,
-                description
             });
 
-            toast.success("Material updated!");
+            toast.success("Material updated");
             setShowModal(false);
             fetchMaterials();
         } catch (err) {
@@ -111,7 +104,7 @@ export default function MaterialList() {
         }
     };
 
-    /* ---------------------- DELETE MATERIAL (ADMIN ONLY) ---------------------- */
+    /* ---------------- DELETE MATERIAL ---------------- */
     const deleteMaterial = async (id) => {
         if (!window.confirm("Delete this material?")) return;
 
@@ -126,7 +119,6 @@ export default function MaterialList() {
 
     return (
         <div className="p-6">
-
             {/* Header */}
             <div className="flex justify-between items-center mb-4">
                 <h1 className="text-2xl font-bold">Materials</h1>
@@ -146,14 +138,16 @@ export default function MaterialList() {
                     <thead className="bg-gray-100">
                         <tr>
                             <th className="p-3 text-left">Name</th>
-                            <th className="p-3 text-left">Quality</th>
-                            <th className="p-3 text-left">Unit</th>
+                            <th className="p-3 text-left">Quality / Unit</th>
                             <th className="p-3 text-left">Quantity</th>
-                            <th className="p-3 text-left">Description</th>
+
+                            {role === "admin" && (
+                                <th className="p-3 text-left">Min Threshold</th>
+                            )}
 
                             {role === "admin" && (
                                 <>
-                                    <th className="p-3 text-left">Price/Unit</th>
+                                    <th className="p-3 text-left">Price / Unit</th>
                                     <th className="p-3 text-left">Total Value</th>
                                 </>
                             )}
@@ -166,10 +160,12 @@ export default function MaterialList() {
                         {materials.map((m) => (
                             <tr key={m._id} className="border-b hover:bg-gray-50">
                                 <td className="p-3">{m.name}</td>
-                                <td className="p-3">{m.quality}</td>
                                 <td className="p-3">{m.unit}</td>
                                 <td className="p-3">{m.availableQty}</td>
-                                <td className="p-3">{m.description || "—"}</td>
+
+                                {role === "admin" && (
+                                    <td className="p-3">{m.minThreshold}</td>
+                                )}
 
                                 {role === "admin" && (
                                     <>
@@ -181,8 +177,6 @@ export default function MaterialList() {
                                 )}
 
                                 <td className="p-3 text-center flex justify-center gap-3">
-
-                                    {/* Edit for both */}
                                     <button
                                         className="text-blue-600"
                                         onClick={() => openEditModal(m)}
@@ -190,7 +184,6 @@ export default function MaterialList() {
                                         <Pencil size={18} />
                                     </button>
 
-                                    {/* Delete only for admin */}
                                     {role === "admin" && (
                                         <button
                                             className="text-red-600"
@@ -199,7 +192,6 @@ export default function MaterialList() {
                                             <Trash2 size={18} />
                                         </button>
                                     )}
-
                                 </td>
                             </tr>
                         ))}
@@ -207,24 +199,22 @@ export default function MaterialList() {
                 </table>
             </div>
 
-            {/* ---------------------- MODAL ---------------------- */}
+            {/* Modal */}
             {showModal && (
                 <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
                     <div className="bg-white rounded-xl p-6 shadow-xl w-[90%] max-w-lg relative">
-
                         <button
                             onClick={() => setShowModal(false)}
-                            className="absolute right-3 top-3 text-gray-500 hover:text-gray-700"
+                            className="absolute right-3 top-3 text-gray-500"
                         >
                             <X size={22} />
                         </button>
 
                         <h2 className="text-xl font-semibold mb-4">
-                            {editMode ? "Edit Material" : "Add Material"}
+                            {editMode ? "Edit Material" : "Add New Material"}
                         </h2>
 
                         <div className="space-y-4">
-
                             <div>
                                 <label className="text-sm">Material Name</label>
                                 <input
@@ -235,22 +225,12 @@ export default function MaterialList() {
                             </div>
 
                             <div>
-                                <label className="text-sm">Quality</label>
-                                <input
-                                    value={quality}
-                                    onChange={(e) => setQuality(e.target.value)}
-                                    className="border p-2 w-full rounded mt-1"
-                                    placeholder="12mm, 18mm, Waterproof..."
-                                />
-                            </div>
-
-                            <div>
-                                <label className="text-sm">Unit</label>
+                                <label className="text-sm">Quality / Unit</label>
                                 <input
                                     value={unit}
                                     onChange={(e) => setUnit(e.target.value)}
                                     className="border p-2 w-full rounded mt-1"
-                                    placeholder="pcs, kg, meter..."
+                                    placeholder="pcs, kg, 18mm, Premium pcs"
                                 />
                             </div>
 
@@ -263,17 +243,6 @@ export default function MaterialList() {
                                     className="border p-2 w-full rounded mt-1"
                                 />
                             </div>
-
-                            <div>
-                                <label className="text-sm">Description</label>
-                                <textarea
-                                    value={description}
-                                    onChange={(e) => setDescription(e.target.value)}
-                                    className="border p-2 w-full rounded mt-1"
-                                    placeholder="Optional note..."
-                                />
-                            </div>
-
                         </div>
 
                         <div className="flex justify-end gap-3 mt-5">
@@ -291,11 +260,9 @@ export default function MaterialList() {
                                 {editMode ? "Update" : "Save"}
                             </button>
                         </div>
-
                     </div>
                 </div>
             )}
-
         </div>
     );
 }

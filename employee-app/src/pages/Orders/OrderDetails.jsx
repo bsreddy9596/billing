@@ -176,10 +176,12 @@ export default function OrderDetails() {
                                 <option value="">Select Material</option>
                                 {materialList.map((m) => (
                                     <option key={m._id} value={m._id}>
-                                        {m.name}
+                                        {m.name} ({m.unit}) – Available: {m.availableQty}
                                     </option>
                                 ))}
                             </select>
+
+
 
                             <input
                                 type="number"
@@ -217,28 +219,28 @@ export default function OrderDetails() {
                             <thead className="bg-gray-100 text-gray-600 text-sm">
                                 <tr>
                                     <th className="px-4 py-3 text-left">Material</th>
-                                    <th className="px-4 py-3 text-right">Quantity</th>
+                                    <th className="px-4 py-3 text-left">Quality</th>
+                                    <th className="px-4 py-3 text-right">Used Qty</th>
                                 </tr>
                             </thead>
+
+
 
                             <tbody className="text-sm">
                                 {(order.materialsUsed || []).length === 0 ? (
                                     <tr>
-                                        <td
-                                            colSpan="2"
-                                            className="px-4 py-6 text-center text-gray-400"
-                                        >
+                                        <td colSpan="3" className="px-4 py-6 text-center text-gray-400">
                                             No materials added
                                         </td>
                                     </tr>
                                 ) : (
                                     order.materialsUsed.map((m, i) => (
-                                        <tr
-                                            key={m._id || `mat-${i}`}
-                                            className="border-t hover:bg-gray-50"
-                                        >
+                                        <tr key={i} className="border-t hover:bg-gray-50">
                                             <td className="px-4 py-3 font-medium text-gray-800">
-                                                {m.materialId?.name || m.name}
+                                                {m.name}
+                                            </td>
+                                            <td className="px-4 py-3 text-gray-600">
+                                                {m.unit}
                                             </td>
                                             <td className="px-4 py-3 text-right font-semibold text-gray-700">
                                                 {m.quantity}
@@ -247,6 +249,8 @@ export default function OrderDetails() {
                                     ))
                                 )}
                             </tbody>
+
+
                         </table>
                     </div>
                 </div>
