@@ -1,75 +1,21 @@
-const Receipt = require("../models/Receipt");
-const Order = require("../models/Order");
-const Counter = require("../models/Counter");
+const receiptService = require("../services/receiptService");
 const PDFDocument = require("pdfkit");
 
-/* ================= AUTO RECEIPT NUMBER ================= */
-const genReceiptNo = async () => {
-  const counter = await Counter.findOneAndUpdate(
-    { key: "receipt" },
-    { $inc: { seq: 1 } },
-    { new: true, upsert: true }
-  );
-  return `SNGR-R${String(counter.seq).padStart(4, "0")}`;
-};
-
+/* ================= CREATE RECEIPT ================= */
 exports.createReceipt = async (req, res) => {
   try {
-    const { orderId, paymentId, amount, mode = "cash", note = "" } = req.body;
+    const result = await receiptService.createReceipt(req.body);
 
-    if (!orderId || !paymentId || !amount) {
-      return res.status(400).json({
+    if (result.error) {
+      return res.status(result.status).json({
         success: false,
-        message: "orderId, paymentId & amount required",
+        message: result.error,
       });
     }
-
-    const order = await Order.findById(orderId);
-    if (!order) {
-      return res.status(404).json({
-        success: false,
-        message: "Order not found",
-      });
-    }
-
-    // 🔎 find exact payment
-    const payment = order.payments.id(paymentId);
-    if (!payment) {
-      return res.status(404).json({
-        success: false,
-        message: "Payment not found for receipt",
-      });
-    }
-
-    /* ===== calculations ===== */
-    const previousPaid = (order.payments || []).reduce(
-      (s, p) => s + Number(p.amount || 0),
-      0
-    );
-
-    const paidTillNow = previousPaid;
-    const sale = Number(order.saleAmount) || Number(order.finalSalePrice) || 0;
-    const balanceDue = Math.max(0, sale - paidTillNow);
-
-    /* ===== create receipt ===== */
-    const receipt = await Receipt.create({
-      orderId,
-      paymentId,
-      amount,
-      mode,
-      note,
-      receiptNo: await genReceiptNo(),
-      paidTillNow,
-      balanceDue,
-    });
-
-    /* 🔥 MOST IMPORTANT PART 🔥 */
-    payment.receiptId = receipt._id;
-    await order.save();
 
     res.status(201).json({
       success: true,
-      data: receipt,
+      data: result,
     });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
@@ -79,9 +25,7 @@ exports.createReceipt = async (req, res) => {
 /* ================= GET RECEIPTS BY ORDER ================= */
 exports.getReceiptsByOrder = async (req, res) => {
   try {
-    const receipts = await Receipt.find({
-      orderId: req.params.orderId,
-    }).sort({ createdAt: -1 });
+    const receipts = await receiptService.getReceiptsByOrder(req.params.orderId);
 
     res.json({ success: true, data: receipts });
   } catch (err) {
@@ -92,19 +36,15 @@ exports.getReceiptsByOrder = async (req, res) => {
 /* ================= GET SINGLE RECEIPT ================= */
 exports.getReceipt = async (req, res) => {
   try {
-    const receipt = await Receipt.findById(req.params.id).populate({
-      path: "orderId",
-      select:
-        "customerName customerPhone customerAddress drawings saleAmount finalSalePrice status",
-    });
+    const result = await receiptService.getReceipt(req.params.id);
 
-    if (!receipt) {
+    if (result.error) {
       return res
-        .status(404)
-        .json({ success: false, message: "Receipt not found" });
+        .status(result.status)
+        .json({ success: false, message: result.error });
     }
 
-    res.json({ success: true, data: receipt });
+    res.json({ success: true, data: result });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }
@@ -113,39 +53,14 @@ exports.getReceipt = async (req, res) => {
 /* ================= DELETE RECEIPT + ROLLBACK ================= */
 exports.deleteReceipt = async (req, res) => {
   try {
-    const receipt = await Receipt.findById(req.params.id);
-    if (!receipt) {
-      return res.status(404).json({
+    const result = await receiptService.deleteReceipt(req.params.id);
+
+    if (result.error) {
+      return res.status(result.status).json({
         success: false,
-        message: "Receipt not found",
+        message: result.error,
       });
     }
-
-    const order = await Order.findById(receipt.orderId);
-
-    if (order) {
-      order.payments = (order.payments || []).filter(
-        (p) => String(p._id) !== String(receipt.paymentId)
-      );
-
-      const paid = order.payments.reduce(
-        (s, p) => s + Number(p.amount || 0),
-        0
-      );
-
-      const sale =
-        Number(order.saleAmount) || Number(order.finalSalePrice) || 0;
-
-      const due = Math.max(0, sale - paid);
-
-      order.paid = paid;
-      order.due = due;
-      order.paymentStatus = due === 0 ? "paid" : paid > 0 ? "partial" : "due";
-
-      await order.save();
-    }
-
-    await receipt.deleteOne();
 
     res.json({
       success: true,
@@ -159,13 +74,10 @@ exports.deleteReceipt = async (req, res) => {
 /* ================= SINGLE RECEIPT PDF ================= */
 exports.downloadReceiptPDF = async (req, res) => {
   try {
-    const receipt = await Receipt.findById(req.params.id).populate({
-      path: "orderId",
-      select: "customerName customerPhone customerAddress",
-    });
+    const receipt = await receiptService.getReceiptForPdf(req.params.id);
 
-    if (!receipt) {
-      return res.status(404).json({ success: false });
+    if (receipt.error) {
+      return res.status(receipt.status).json({ success: false, message: receipt.error });
     }
 
     const doc = new PDFDocument({ margin: 40 });
@@ -213,9 +125,7 @@ exports.downloadReceiptPDF = async (req, res) => {
 /* ================= GET ALL RECEIPTS (ADMIN) ================= */
 exports.getAllReceipts = async (req, res) => {
   try {
-    const receipts = await Receipt.find()
-      .populate("orderId", "customerName customerPhone")
-      .sort({ createdAt: -1 });
+    const receipts = await receiptService.getAllReceipts();
 
     res.json({
       success: true,
@@ -229,18 +139,7 @@ exports.getAllReceipts = async (req, res) => {
 /* ================= ALL RECEIPTS PDF ================= */
 exports.downloadReceiptsPDF = async (req, res) => {
   try {
-    const { from, to } = req.query;
-
-    const filter = {};
-    if (from || to) {
-      filter.createdAt = {};
-      if (from) filter.createdAt.$gte = new Date(from);
-      if (to) filter.createdAt.$lte = new Date(to);
-    }
-
-    const receipts = await Receipt.find(filter)
-      .populate("orderId", "customerName customerPhone")
-      .sort({ createdAt: 1 });
+    const receipts = await receiptService.getReceiptsForPdfReport(req.query.from, req.query.to);
 
     const doc = new PDFDocument({ size: "A4", margin: 40 });
 
@@ -261,7 +160,7 @@ exports.downloadReceiptsPDF = async (req, res) => {
 
     doc
       .fontSize(10)
-      .text(`Period: ${from || "Beginning"} to ${to || "Till Date"}`, {
+      .text(`Period: ${req.query.from || "Beginning"} to ${req.query.to || "Till Date"}`, {
         align: "center",
       })
       .moveDown(1);

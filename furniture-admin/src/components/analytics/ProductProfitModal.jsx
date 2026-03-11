@@ -82,9 +82,9 @@ export default function ProductProfitModal({ onClose }) {
                     </div>
 
                     {/* ===== TABLE ===== */}
-                    <div className="border rounded-xl overflow-hidden">
-                        <table className="w-full text-sm">
-                            <thead className="bg-gray-100 text-gray-600">
+                    <div className="border border-slate-200 rounded-xl overflow-x-auto bg-white max-w-full">
+                        <table className="w-full text-sm whitespace-nowrap">
+                            <thead className="bg-slate-50 text-slate-500 uppercase tracking-wider text-[11px] font-bold">
                                 <tr>
                                     <th className="px-4 py-3 text-left">Product</th>
                                     <th className="px-4 py-3 text-right">Qty Sold</th>
@@ -97,13 +97,13 @@ export default function ProductProfitModal({ onClose }) {
                             <tbody>
                                 {loading ? (
                                     <tr>
-                                        <td colSpan="5" className="text-center py-6">
+                                        <td colSpan="5" className="text-center py-6 text-slate-500">
                                             Loading...
                                         </td>
                                     </tr>
                                 ) : products.length === 0 ? (
                                     <tr>
-                                        <td colSpan="5" className="text-center py-6">
+                                        <td colSpan="5" className="text-center py-6 text-slate-500">
                                             No product data found
                                         </td>
                                     </tr>
@@ -111,23 +111,23 @@ export default function ProductProfitModal({ onClose }) {
                                     products.map((p, i) => (
                                         <tr
                                             key={i}
-                                            className="border-t hover:bg-gray-50"
+                                            className="border-t border-slate-100 hover:bg-slate-50 transition-colors"
                                         >
-                                            <td className="px-4 py-3 flex items-center gap-2">
-                                                <Package size={16} className="text-gray-400" />
+                                            <td className="px-4 py-3 min-w-[150px] font-medium text-slate-700 flex items-center gap-2">
+                                                <Package size={16} className="text-primary-400" />
                                                 {p.name}
                                             </td>
-                                            <td className="px-4 py-3 text-right">
+                                            <td className="px-4 py-3 text-right text-slate-600 font-medium">
                                                 {p.quantity}
                                             </td>
-                                            <td className="px-4 py-3 text-right">
-                                                ₹{p.revenue}
+                                            <td className="px-4 py-3 text-right text-slate-700 font-medium whitespace-nowrap">
+                                                ₹{p.revenue.toLocaleString()}
                                             </td>
-                                            <td className="px-4 py-3 text-right">
-                                                ₹{p.cost}
+                                            <td className="px-4 py-3 text-right text-slate-700 font-medium whitespace-nowrap">
+                                                ₹{p.cost.toLocaleString()}
                                             </td>
-                                            <td className="px-4 py-3 text-right font-semibold text-green-600">
-                                                ₹{p.profit}
+                                            <td className="px-4 py-3 text-right font-bold text-emerald-600 whitespace-nowrap">
+                                                ₹{p.profit.toLocaleString()}
                                             </td>
                                         </tr>
                                     ))

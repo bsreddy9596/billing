@@ -60,26 +60,35 @@ export default function Sidebar({ open, setOpen }) {
             )}
 
             <aside
-                className={`fixed top-[76px] left-0 z-40
-                h-[calc(100vh-76px)] w-64
-                bg-white border-r border-gray-200 shadow-md
+                className={`fixed top-0 left-0 z-40
+                h-screen w-64
+                bg-white border-r border-slate-100 shadow-[4px_0_24px_rgba(0,0,0,0.02)]
                 flex flex-col justify-between
                 transform transition-transform duration-300 ease-in-out
                 ${open ? "translate-x-0" : "-translate-x-full lg:translate-x-0"}
             `}
             >
-                {/* Close button for mobile */}
-                <button
-                    className="absolute top-3 right-3 text-gray-500 lg:hidden"
-                    onClick={() => setOpen(false)}
-                >
-                    <X size={18} />
-                </button>
+                {/* Company Branding Logo Area */}
+                <div className="h-16 flex items-center justify-between px-5 bg-gradient-to-r from-lector-pink to-lector-purple text-white shadow-sm">
+                    <div className="flex items-center gap-3 font-bold tracking-wide overflow-hidden">
+                        <div className="h-10 w-10 flex-shrink-0 bg-white rounded-lg flex items-center justify-center p-1 shadow-sm relative overflow-hidden">
+                            <img src="/logo/logo.png" alt="Logo" className="w-full h-full object-contain relative z-10" />
+                        </div>
+                        <span className="text-lg leading-tight truncate">SNGR Furnitures</span>
+                    </div>
+                    {/* Close button for mobile */}
+                    <button
+                        className="p-1 rounded-md text-white/80 hover:text-white hover:bg-white/20 lg:hidden transition-colors flex-shrink-0 ml-2"
+                        onClick={() => setOpen(false)}
+                    >
+                        <X size={18} />
+                    </button>
+                </div>
 
-                <nav className="flex-1 overflow-y-auto px-4 py-4 space-y-6">
+                <nav className="flex-1 overflow-y-auto px-4 py-6 space-y-8 custom-scrollbar">
                     {menuSections.map((section) => (
                         <div key={section.title}>
-                            <p className="text-xs font-semibold text-gray-400 mb-2">
+                            <p className="text-[11px] font-bold tracking-wider text-slate-400 mb-3 uppercase px-2">
                                 {section.title}
                             </p>
 
@@ -90,18 +99,20 @@ export default function Sidebar({ open, setOpen }) {
                                         to={item.path}
                                         end={
                                             item.path === "/invoices" ||
-                                            item.path === "/receipts"
-                                        } // ✅ active state fix
+                                            item.path === "/admin/receipts"
+                                        }
                                         onClick={() => setOpen(false)}
                                         className={({ isActive }) =>
-                                            `flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-all duration-200
+                                            `flex items-center gap-3 px-4 py-3 rounded-xl text-sm transition-all duration-200 group relative
                                             ${isActive
-                                                ? "bg-[#E6FFFA] text-[#00BFA6] font-semibold"
-                                                : "text-gray-700 hover:bg-[#E6FFFA] hover:text-[#00BFA6]"
+                                                ? "text-primary-600 font-semibold bg-primary-50/50"
+                                                : "text-slate-500 hover:bg-slate-50 hover:text-slate-800 font-medium"
                                             }`
                                         }
                                     >
-                                        {item.icon}
+                                        <div className={({ isActive }) => isActive ? "text-primary-500" : "text-slate-400 group-hover:text-slate-500 transition-colors"}>
+                                            {item.icon}
+                                        </div>
                                         <span>{item.name}</span>
                                     </NavLink>
                                 ))}
@@ -110,9 +121,9 @@ export default function Sidebar({ open, setOpen }) {
                     ))}
                 </nav>
 
-                <div className="border-t p-4 text-xs text-gray-500 flex justify-between">
-                    <span>Help & Support</span>
-                    <span>v1.0.0</span>
+                <div className="border-t border-slate-100 p-4 text-xs font-medium text-slate-500 flex justify-between items-center bg-slate-50/50">
+                    <span className="hover:text-slate-800 cursor-pointer transition-colors">Help & Support</span>
+                    <span className="opacity-60">v2.0.0</span>
                 </div>
             </aside>
         </>

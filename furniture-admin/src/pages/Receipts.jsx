@@ -6,9 +6,15 @@ import {
     Search,
     ArrowLeft,
     Download,
+    Receipt,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
+
+import { Card, CardContent } from "../components/ui/Card";
+import { Input } from "../components/ui/Input";
+import Button from "../components/ui/Button";
+import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "../components/ui/Table";
 
 const fmt = (d) => new Date(d).toLocaleDateString("en-IN");
 
@@ -107,168 +113,172 @@ export default function AdminReceipts() {
 
 
     return (
-        <div className="p-6 bg-[#F7FFFC] min-h-screen space-y-6">
+        <div className="space-y-6">
             {/* ================= HEADER ================= */}
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <div className="flex items-center gap-3">
-                    <button
-                        onClick={() => navigate(-1)}
-                        className="p-2 rounded-lg border hover:bg-gray-50"
-                    >
-                        <ArrowLeft size={18} />
-                    </button>
-                    <h1 className="text-2xl font-bold text-[#0e9a86]">
-                        Receipts
-                    </h1>
+                    <Button variant="secondary" size="sm" onClick={() => navigate(-1)} icon={ArrowLeft} className="px-2" />
+                    <div>
+                        <h1 className="text-2xl font-bold tracking-tight text-slate-900 flex items-center gap-2">
+                            <Receipt className="text-primary-600" />
+                            Receipts
+                        </h1>
+                        <p className="text-sm text-slate-500 mt-1">View and manage payment receipts</p>
+                    </div>
                 </div>
 
                 {/* PDF BUTTON */}
-                <button
-                    onClick={downloadPDF}
-                    className="flex items-center gap-2 px-4 py-2 rounded-lg bg-[#0e9a86] text-white hover:bg-[#0c7f70]"
-                >
-                    <Download size={16} />
+                <Button onClick={downloadPDF} icon={Download} className="w-full sm:w-auto">
                     Download PDF
-                </button>
+                </Button>
             </div>
 
             {/* ================= FILTER BAR ================= */}
-            <div className="bg-white rounded-2xl shadow p-4 flex flex-wrap gap-4 items-center">
-                {/* SEARCH */}
-                <div className="relative flex-1 min-w-[220px]">
-                    <Search
-                        className="absolute left-3 top-2.5 text-gray-400"
-                        size={16}
-                    />
-                    <input
-                        value={search}
-                        onChange={(e) => setSearch(e.target.value)}
-                        placeholder="Search customer / mobile / receipt no"
-                        className="pl-9 w-full border rounded-lg px-3 py-2 focus:ring-1 focus:ring-[#0e9a86]"
-                    />
-                </div>
+            <Card>
+                <CardContent className="p-4 flex flex-wrap gap-4 items-center">
+                    {/* SEARCH */}
+                    <div className="relative flex-1 min-w-[220px]">
+                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                            <Search className="h-5 w-5 text-slate-400" />
+                        </div>
+                        <Input
+                            value={search}
+                            onChange={(e) => setSearch(e.target.value)}
+                            placeholder="Search customer, mobile, or receipt no..."
+                            className="pl-10 h-10"
+                        />
+                    </div>
 
-                {/* FROM DATE */}
-                <input
-                    type="date"
-                    value={from}
-                    onChange={(e) => setFrom(e.target.value)}
-                    className="border rounded-lg px-3 py-2 w-40"
-                />
+                    <div className="flex items-center gap-3 flex-wrap sm:flex-nowrap">
+                        {/* FROM DATE */}
+                        <Input
+                            type="date"
+                            value={from}
+                            onChange={(e) => setFrom(e.target.value)}
+                            className="w-full sm:w-40 h-10"
+                            title="From Date"
+                        />
 
-                {/* TO DATE */}
-                <input
-                    type="date"
-                    value={to}
-                    onChange={(e) => setTo(e.target.value)}
-                    className="border rounded-lg px-3 py-2 w-40"
-                />
+                        {/* TO DATE */}
+                        <Input
+                            type="date"
+                            value={to}
+                            onChange={(e) => setTo(e.target.value)}
+                            className="w-full sm:w-40 h-10"
+                            title="To Date"
+                        />
 
-                {/* CLEAR */}
-                <button
-                    onClick={() => {
-                        setSearch("");
-                        setFrom("");
-                        setTo("");
-                    }}
-                    className="border rounded-lg px-4 py-2 hover:bg-gray-50"
-                >
-                    Clear
-                </button>
-            </div>
+                        {/* CLEAR */}
+                        <Button
+                            variant="secondary"
+                            className="h-10 px-4 w-full sm:w-auto"
+                            onClick={() => {
+                                setSearch("");
+                                setFrom("");
+                                setTo("");
+                            }}
+                        >
+                            Clear
+                        </Button>
+                    </div>
+                </CardContent>
+            </Card>
 
             {/* ================= MONTHLY SUMMARY ================= */}
             {Object.keys(monthly).length > 0 && (
-                <div className="bg-white rounded-2xl shadow p-4">
-                    <div className="font-semibold mb-3 text-[#0e9a86]">
-                        Monthly Receipt Summary
-                    </div>
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
-                        {Object.entries(monthly).map(([m, amt]) => (
-                            <div
-                                key={m}
-                                className="border rounded-xl p-3 text-center bg-[#F0FFF7]"
-                            >
-                                <div className="text-gray-500">{m}</div>
-                                <div className="font-bold text-green-700">
-                                    ₹{amt.toLocaleString()}
+                <Card>
+                    <CardContent className="p-5">
+                        <div className="font-semibold text-slate-800 mb-4 flex items-center gap-2">
+                            Monthly Receipt Summary
+                        </div>
+                        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 text-sm">
+                            {Object.entries(monthly).map(([m, amt]) => (
+                                <div
+                                    key={m}
+                                    className="border border-slate-100 rounded-xl p-4 text-center bg-slate-50/50 hover:bg-primary-50 hover:border-primary-100 transition-colors"
+                                >
+                                    <div className="text-slate-500 font-medium">{m}</div>
+                                    <div className="font-bold text-lg text-primary-700 mt-1">
+                                        ₹{amt.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                    </div>
                                 </div>
-                            </div>
-                        ))}
-                    </div>
-                </div>
+                            ))}
+                        </div>
+                    </CardContent>
+                </Card>
             )}
 
             {/* ================= TABLE ================= */}
-            <div className="bg-white rounded-2xl shadow overflow-x-auto">
-                <table className="w-full text-sm">
-                    <thead className="bg-[#F0FFF7] text-[#0e9a86]">
-                        <tr>
-                            <th className="p-3 text-left">Receipt No</th>
-                            <th className="p-3 text-left">Customer</th>
-                            <th className="p-3 text-left">Mobile</th>
-                            <th className="p-3 text-right">Amount</th>
-                            <th className="p-3 text-center">Date</th>
-                            <th className="p-3 text-right">Actions</th>
-                        </tr>
-                    </thead>
+            <Card>
+                <div className="overflow-x-auto">
+                    <Table>
+                        <TableHeader>
+                            <TableRow>
+                                <TableHead>Receipt No</TableHead>
+                                <TableHead>Customer</TableHead>
+                                <TableHead>Mobile</TableHead>
+                                <TableHead className="text-right">Amount</TableHead>
+                                <TableHead className="text-center">Date</TableHead>
+                                <TableHead className="text-right sticky right-0 bg-slate-50/90 backdrop-blur z-20 shadow-[-4px_0_10px_-4px_rgba(0,0,0,0.02)] border-l border-slate-100">Actions</TableHead>
+                            </TableRow>
+                        </TableHeader>
 
-                    <tbody>
-                        {filtered.map((r) => (
-                            <tr
-                                key={r._id}
-                                className="border-t hover:bg-gray-50"
-                            >
-                                <td className="p-3 font-semibold">
-                                    {r.receiptNo}
-                                </td>
-                                <td className="p-3">
-                                    {r.orderId?.customerName || "Walk-in"}
-                                </td>
-                                <td className="p-3">
-                                    {r.orderId?.customerPhone || "-"}
-                                </td>
-                                <td className="p-3 text-right">
-                                    ₹{Number(r.amount).toLocaleString()}
-                                </td>
-                                <td className="p-3 text-center">
-                                    {fmt(r.createdAt)}
-                                </td>
-                                <td className="p-3 flex justify-end gap-2">
-                                    <button
-                                        onClick={() =>
-                                            navigate(
-                                                `/receipts/preview/${r._id}`
-                                            )
-                                        }
-                                        className="p-2 border rounded-lg hover:bg-[#F0FFF7]"
+                        <TableBody>
+                            {filtered.length > 0 ? (
+                                filtered.map((r) => (
+                                    <TableRow key={r._id} className="group">
+                                        <TableCell className="font-semibold text-slate-800">
+                                            {r.receiptNo}
+                                        </TableCell>
+                                        <TableCell className="font-medium text-slate-700">
+                                            {r.orderId?.customerName || "Walk-in"}
+                                        </TableCell>
+                                        <TableCell className="text-slate-600">
+                                            {r.orderId?.customerPhone || "—"}
+                                        </TableCell>
+                                        <TableCell className="text-right font-bold text-emerald-600">
+                                            ₹{Number(r.amount).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                        </TableCell>
+                                        <TableCell className="text-center text-slate-500">
+                                            {fmt(r.createdAt)}
+                                        </TableCell>
+                                        <TableCell className="text-right sticky right-0 bg-white group-hover:bg-slate-50/80 z-10 shadow-[-4px_0_10px_-4px_rgba(0,0,0,0.05)] border-l border-slate-100">
+                                            <div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                <Button
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    className="h-8 w-8 p-0 text-slate-400 hover:text-primary-600"
+                                                    onClick={() => navigate(`/receipts/preview/${r._id}`)}
+                                                >
+                                                    <FileText size={16} />
+                                                </Button>
+
+                                                <Button
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    className="h-8 w-8 p-0 text-slate-400 hover:text-rose-600"
+                                                    onClick={() => deleteReceipt(r._id)}
+                                                >
+                                                    <Trash2 size={16} />
+                                                </Button>
+                                            </div>
+                                        </TableCell>
+                                    </TableRow>
+                                ))
+                            ) : (
+                                <TableRow>
+                                    <TableCell
+                                        colSpan="6"
+                                        className="h-32 text-center text-slate-500"
                                     >
-                                        <FileText size={15} />
-                                    </button>
-
-                                    <button
-                                        onClick={() => deleteReceipt(r._id)}
-                                        className="p-2 border rounded-lg text-red-600 hover:bg-red-50"
-                                    >
-                                        <Trash2 size={15} />
-                                    </button>
-                                </td>
-                            </tr>
-                        ))}
-
-                        {filtered.length === 0 && (
-                            <tr>
-                                <td
-                                    colSpan="6"
-                                    className="p-6 text-center text-gray-400"
-                                >
-                                    No receipts found
-                                </td>
-                            </tr>
-                        )}
-                    </tbody>
-                </table>
-            </div>
+                                        No receipts found.
+                                    </TableCell>
+                                </TableRow>
+                            )}
+                        </TableBody>
+                    </Table>
+                </div>
+            </Card>
         </div>
     );
 }

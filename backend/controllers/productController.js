@@ -1,57 +1,30 @@
-const Product = require("../models/Product");
+const productService = require("../services/productService");
 const logger = require("../config/logger");
-
-/* =====================================================
-   🔔 LOW STOCK SOCKET HELPER
-===================================================== */
-function emitLowStock(io, product) {
-  if (product.stockQty <= 3) {
-    io.emit("low-stock", {
-      productId: product._id,
-      name: product.name,
-      stockQty: product.stockQty,
-      message: `⚠️ Low stock: ${product.name} (${product.stockQty})`,
-    });
-  }
-}
 
 /* =====================================================
    ➕ CREATE PRODUCT (FROM MODAL)
 ===================================================== */
 async function createProduct(req, res, next) {
   try {
-    const { name, brand, stockQty, buyPrice, sellPrice } = req.body;
+    const result = await productService.createProduct(
+      req.body,
+      req.file,
+      req.protocol,
+      req.get("host"),
+      req.user.role,
+      req.user._id
+    );
 
-    if (!name || !sellPrice) {
-      return res.status(400).json({
+    if (result.error) {
+      return res.status(result.status).json({
         success: false,
-        message: "Product name & sell price required",
+        message: result.error,
       });
     }
 
-    // 🛡️ ROLE BASED BUY PRICE
-    const finalBuyPrice = req.user.role === "admin" ? Number(buyPrice || 0) : 0;
-
-    // ✅ CORRECT IMAGE PATH (drawings + full URL)
-    const image = req.file
-      ? `${req.protocol}://${req.get("host")}/uploads/drawings/${
-          req.file.filename
-        }`
-      : null;
-
-    const product = await Product.create({
-      name,
-      brand,
-      stockQty: Number(stockQty || 0),
-      buyPrice: finalBuyPrice, // 🔒 employee → always 0
-      sellPrice: Number(sellPrice),
-      image,
-      createdBy: req.user._id,
-    });
-
     res.status(201).json({
       success: true,
-      data: product,
+      data: result,
     });
   } catch (err) {
     next(err);
@@ -63,12 +36,7 @@ async function createProduct(req, res, next) {
 ===================================================== */
 async function getProducts(req, res, next) {
   try {
-    let products = await Product.find().sort({ createdAt: -1 }).lean();
-
-    // 👀 Hide buyPrice for employee
-    if (req.user.role !== "admin") {
-      products = products.map(({ buyPrice, ...rest }) => rest);
-    }
+    const products = await productService.getProducts(req.user.role);
 
     res.json({
       success: true,
@@ -85,36 +53,17 @@ async function getProducts(req, res, next) {
 ===================================================== */
 async function updateProduct(req, res, next) {
   try {
-    const { id } = req.params;
+    const io = req.app.get("io");
+    const result = await productService.updateProduct(req.params.id, req.body, req.file, io);
 
-    const update = {
-      name: req.body.name,
-      brand: req.body.brand,
-      stockQty: Number(req.body.stockQty || 0),
-      buyPrice: Number(req.body.buyPrice || 0),
-      sellPrice: Number(req.body.sellPrice),
-    };
-
-    if (req.file) {
-      update.image = `/uploads/${req.file.filename}`;
-    }
-
-    const product = await Product.findByIdAndUpdate(id, update, {
-      new: true,
-    });
-
-    if (!product) {
-      return res.status(404).json({
+    if (result.error) {
+      return res.status(result.status).json({
         success: false,
-        message: "Product not found",
+        message: result.error,
       });
     }
 
-    // 🔔 Low stock notify
-    const io = req.app.get("io");
-    emitLowStock(io, product);
-
-    res.json({ success: true, data: product });
+    res.json({ success: true, data: result });
   } catch (err) {
     logger.error(`❌ updateProduct: ${err.message}`);
     next(err);
@@ -126,14 +75,12 @@ async function updateProduct(req, res, next) {
 ===================================================== */
 async function deleteProduct(req, res, next) {
   try {
-    const { id } = req.params;
+    const result = await productService.deleteProduct(req.params.id);
 
-    const product = await Product.findByIdAndDelete(id);
-
-    if (!product) {
-      return res.status(404).json({
+    if (result.error) {
+      return res.status(result.status).json({
         success: false,
-        message: "Product not found",
+        message: result.error,
       });
     }
 

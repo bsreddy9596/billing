@@ -1,5 +1,4 @@
-const User = require("../models/User");
-const EmployeeLedger = require("../models/EmployeeLedger");
+const employeeService = require("../services/employeeService");
 const logger = require("../config/logger");
 
 /* =========================================================
@@ -7,10 +6,7 @@ const logger = require("../config/logger");
 ========================================================= */
 const getEmployees = async (req, res, next) => {
   try {
-    const employees = await User.find({ role: "employee" })
-      .select("-passwordHash -__v")
-      .sort({ createdAt: -1 })
-      .lean();
+    const employees = await employeeService.getEmployees();
 
     res.status(200).json({
       success: true,
@@ -28,7 +24,7 @@ const getEmployees = async (req, res, next) => {
 ========================================================= */
 const createEmployee = async (req, res, next) => {
   try {
-    const { name, phone, email, password } = req.body;
+    const { name, phone, password } = req.body;
 
     if (!name || !phone || !password) {
       return res.status(400).json({
@@ -37,38 +33,18 @@ const createEmployee = async (req, res, next) => {
       });
     }
 
-    const exists = await User.findOne({ phone });
-    if (exists) {
+    const result = await employeeService.createEmployee(req.user._id, req.body);
+
+    if (result.error) {
       return res
-        .status(409)
-        .json({ success: false, message: "Employee already exists" });
+        .status(result.status)
+        .json({ success: false, message: result.error });
     }
-
-    const employeeCode = `EMP${Math.floor(10000 + Math.random() * 90000)}`;
-
-    const employee = new User({
-      name,
-      email,
-      phone,
-      role: "employee",
-      isApproved: true,
-      employeeCode,
-      adminId: req.user._id,
-    });
-
-    await employee.setPassword(password);
-    await employee.save();
 
     res.status(201).json({
       success: true,
       message: "Employee created",
-      data: {
-        id: employee._id,
-        name: employee.name,
-        phone: employee.phone,
-        employeeCode,
-        password, // return once only
-      },
+      data: result,
     });
   } catch (err) {
     logger.error(`❌ Create employee error: ${err.message}`);
@@ -88,7 +64,7 @@ const addLedgerEntry = async (req, res, next) => {
       });
     }
 
-    const { employeeId, type, amount, note = "" } = req.body;
+    const { employeeId, type, amount } = req.body;
 
     if (!employeeId || !type || amount === undefined) {
       return res.status(400).json({
@@ -104,34 +80,17 @@ const addLedgerEntry = async (req, res, next) => {
       });
     }
 
-    const amt = Number(amount);
-    if (isNaN(amt) || amt <= 0) {
-      return res.status(400).json({
-        success: false,
-        message: "Amount must be a valid number",
-      });
+    const result = await employeeService.addLedgerEntry(req.user._id, req.body);
+    if (result.error) {
+      return res
+        .status(result.status)
+        .json({ success: false, message: result.error });
     }
-
-    const employee = await User.findById(employeeId);
-    if (!employee || employee.role !== "employee") {
-      return res.status(404).json({
-        success: false,
-        message: "Employee not found",
-      });
-    }
-
-    const entry = await EmployeeLedger.create({
-      employeeId,
-      type,
-      amount: amt,
-      note,
-      createdBy: req.user._id,
-    });
 
     res.status(201).json({
       success: true,
       message: "Ledger entry added",
-      data: entry,
+      data: result,
     });
   } catch (err) {
     logger.error(`❌ Add ledger entry error: ${err.message}`);
@@ -144,43 +103,17 @@ const addLedgerEntry = async (req, res, next) => {
 ========================================================= */
 const getEmployeeLedger = async (req, res, next) => {
   try {
-    const employeeId = req.params.id;
+    const result = await employeeService.getEmployeeLedger(req.params.id);
 
-    const employee = await User.findById(employeeId).lean();
-    if (!employee || employee.role !== "employee") {
-      return res.status(404).json({
-        success: false,
-        message: "Employee not found",
-      });
+    if (result.error) {
+      return res
+        .status(result.status)
+        .json({ success: false, message: result.error });
     }
-
-    const ledger = await EmployeeLedger.find({ employeeId })
-      .sort({ createdAt: -1 })
-      .lean();
-
-    const summary = ledger.reduce(
-      (acc, e) => {
-        if (e.type === "credit") acc.credit += e.amount;
-        if (e.type === "debit") acc.debit += e.amount;
-        return acc;
-      },
-      { credit: 0, debit: 0 }
-    );
 
     res.status(200).json({
       success: true,
-      employee: {
-        id: employee._id,
-        name: employee.name,
-        phone: employee.phone,
-        employeeCode: employee.employeeCode,
-      },
-      summary: {
-        totalCredit: summary.credit,
-        totalDebit: summary.debit,
-        balance: summary.credit - summary.debit,
-      },
-      data: ledger,
+      ...result,
     });
   } catch (err) {
     logger.error(`❌ Get employee ledger error: ${err.message}`);
@@ -193,29 +126,11 @@ const getEmployeeLedger = async (req, res, next) => {
 ========================================================= */
 const getMyLedger = async (req, res, next) => {
   try {
-    const employeeId = req.user._id;
-
-    const ledger = await EmployeeLedger.find({ employeeId })
-      .sort({ createdAt: -1 })
-      .lean();
-
-    const summary = ledger.reduce(
-      (acc, e) => {
-        if (e.type === "credit") acc.credit += e.amount;
-        if (e.type === "debit") acc.debit += e.amount;
-        return acc;
-      },
-      { credit: 0, debit: 0 }
-    );
+    const result = await employeeService.getMyLedger(req.user._id);
 
     res.status(200).json({
       success: true,
-      summary: {
-        totalCredit: summary.credit,
-        totalDebit: summary.debit,
-        balance: summary.credit - summary.debit,
-      },
-      data: ledger,
+      ...result,
     });
   } catch (err) {
     logger.error(`❌ Get my ledger error: ${err.message}`);
@@ -235,27 +150,17 @@ const updateLedgerEntry = async (req, res, next) => {
       });
     }
 
-    const { id } = req.params;
-    const { type, amount, note } = req.body;
-
-    const entry = await EmployeeLedger.findById(id);
-    if (!entry) {
-      return res.status(404).json({
-        success: false,
-        message: "Ledger entry not found",
-      });
+    const result = await employeeService.updateLedgerEntry(req.params.id, req.body);
+    if (result.error) {
+      return res
+        .status(result.status)
+        .json({ success: false, message: result.error });
     }
-
-    if (type && ["credit", "debit"].includes(type)) entry.type = type;
-    if (amount !== undefined) entry.amount = Number(amount) || entry.amount;
-    if (note !== undefined) entry.note = note;
-
-    await entry.save();
 
     res.json({
       success: true,
       message: "Ledger entry updated",
-      data: entry,
+      data: result,
     });
   } catch (err) {
     logger.error(`❌ Update ledger entry error: ${err.message}`);
@@ -275,15 +180,12 @@ const removeLedgerEntry = async (req, res, next) => {
       });
     }
 
-    const entry = await EmployeeLedger.findById(req.params.id);
-    if (!entry) {
-      return res.status(404).json({
-        success: false,
-        message: "Ledger entry not found",
-      });
+    const result = await employeeService.removeLedgerEntry(req.params.id);
+    if (result.error) {
+      return res
+        .status(result.status)
+        .json({ success: false, message: result.error });
     }
-
-    await entry.deleteOne();
 
     res.json({
       success: true,

@@ -1,0 +1,29 @@
+
+> furniture-admin@0.0.0 build
+> vite build
+
+[36mvite v7.1.12 [32mbuilding for production...[36m[39m
+transforming...
+[32mΓ£ô[39m 2850 modules transformed.
+Γ£ù Build failed in 6.64s
+error during build:
+src/pages/CreateOrder.jsx (8:9): "Button" is not exported by "src/components/ui/Button.jsx", imported by "src/pages/CreateOrder.jsx".
+file: D:/projects/billing/furniture-admin/src/pages/CreateOrder.jsx:8:9
+
+ 6: import api from "../api/api";
+ 7: import { Plus, Trash, Image as ImageIcon, Save, ArrowLeft, Ruler, StickyNote } from "lucide-react";
+ 8: import { Button } from "../components/ui/Button";
+             ^
+ 9: import { Input, Label } from "../components/ui/Input";
+10: import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "../components/ui/Card";
+
+    at getRollupError (file:///D:/projects/billing/furniture-admin/node_modules/rollup/dist/es/shared/parseAst.js:401:41)
+    at error (file:///D:/projects/billing/furniture-admin/node_modules/rollup/dist/es/shared/parseAst.js:397:42)
+    at Module.error (file:///D:/projects/billing/furniture-admin/node_modules/rollup/dist/es/shared/node-entry.js:16939:16)
+    at Module.traceVariable (file:///D:/projects/billing/furniture-admin/node_modules/rollup/dist/es/shared/node-entry.js:17391:29)
+    at ModuleScope.findVariable (file:///D:/projects/billing/furniture-admin/node_modules/rollup/dist/es/shared/node-entry.js:15061:39)
+    at FunctionScope.findVariable (file:///D:/projects/billing/furniture-admin/node_modules/rollup/dist/es/shared/node-entry.js:5642:38)
+    at FunctionBodyScope.findVariable (file:///D:/projects/billing/furniture-admin/node_modules/rollup/dist/es/shared/node-entry.js:5642:38)
+    at Identifier.bind (file:///D:/projects/billing/furniture-admin/node_modules/rollup/dist/es/shared/node-entry.js:5413:40)
+    at CallExpression.bind (file:///D:/projects/billing/furniture-admin/node_modules/rollup/dist/es/shared/node-entry.js:2800:28)
+    at CallExpression.bind (file:///D:/projects/billing/furniture-admin/node_modules/rollup/dist/es/shared/node-entry.js:12108:15)

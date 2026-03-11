@@ -30,6 +30,23 @@ const lineItemSchema = new mongoose.Schema(
       min: 0,
     },
 
+    taxPercent: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
+
+    taxAmount: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
+
+    unit: {
+      type: String,
+      default: "pcs",
+    },
+
     amount: {
       type: Number,
       required: true,
@@ -243,5 +260,7 @@ const invoiceSchema = new mongoose.Schema(
   },
   { timestamps: true }
 );
+
+invoiceSchema.index({ cancelled: 1, dueAmount: 1 });
 
 module.exports = mongoose.model("Invoice", invoiceSchema);

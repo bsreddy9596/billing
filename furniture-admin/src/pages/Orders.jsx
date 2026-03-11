@@ -8,9 +8,16 @@ import {
     XCircle,
     Trash2,
     Search,
-    Pencil
+    Pencil,
+    Plus,
+    MoreVertical
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/Card";
+import Button from "../components/ui/Button";
+import { Input, Label } from "../components/ui/Input";
+import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "../components/ui/Table";
+import Badge from "../components/ui/Badge";
 
 export default function Orders() {
     const navigate = useNavigate();
@@ -146,142 +153,167 @@ export default function Orders() {
 
     /* ---------------- TABLE ROW ---------------- */
     const renderRow = (o) => (
-        <tr
+        <TableRow
             key={o._id}
-            className="border-b hover:bg-[#E6FFF8] cursor-pointer"
+            className="cursor-pointer group"
             onClick={() => navigate(`/orders/${o._id}`)}
             onContextMenu={(e) => showContextMenu(e, o)}
         >
-            <td className="p-3">{new Date(o.createdAt).toLocaleDateString("en-IN")}</td>
-            <td className="p-3 font-medium">{o.customerName}</td>
-            <td className="p-3">{o.customerPhone}</td>
+            <TableCell className="text-slate-600 whitespace-nowrap">
+                {new Date(o.createdAt).toLocaleDateString("en-IN", { month: "short", day: "2-digit", year: "numeric" })}
+            </TableCell>
+            <TableCell>
+                <div className="font-medium text-slate-900">{o.customerName}</div>
+                <div className="text-sm text-slate-500">{o.customerPhone}</div>
+            </TableCell>
 
-            <td className="p-3">
+            <TableCell>
                 <StatusBadge status={o.status} />
-            </td>
+            </TableCell>
 
             {/* Confirmed Tab → Amount */}
             {tab === "confirmed" && (
-                <td className="p-3 text-green-600 font-semibold">
+                <TableCell className="text-right font-bold text-emerald-600">
                     ₹{(o.saleAmount || 0).toLocaleString()}
-                </td>
+                </TableCell>
             )}
 
             {/* Rejected Tab → Reason */}
             {tab === "rejected" && (
-                <td className="p-3 text-red-600">{o.rejectionReason || "--"}</td>
+                <TableCell className="text-rose-600 text-sm max-w-[200px] truncate" title={o.rejectionReason}>
+                    {o.rejectionReason || "--"}
+                </TableCell>
             )}
 
-            <td className="p-3 flex gap-2">
+            <TableCell className="text-right whitespace-nowrap space-x-2 sticky right-0 bg-white group-hover:bg-slate-50/80 z-10 shadow-[-4px_0_10px_-4px_rgba(0,0,0,0.05)] border-l border-slate-100">
 
                 {o.status === "pending" && (
                     <>
-                        <ActionButton
-                            icon={<CheckCircle size={15} />}
-                            label="Confirm"
-                            color="green"
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            className="text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 h-8 px-2"
                             onClick={(e) => {
                                 e.stopPropagation();
                                 setAmountModal(o._id);
                             }}
-                        />
+                        >
+                            <CheckCircle size={16} className="mr-1" />
+                        </Button>
 
-                        <ActionButton
-                            icon={<XCircle size={15} />}
-                            label="Reject"
-                            color="red"
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            className="text-rose-600 hover:text-rose-700 hover:bg-rose-50 h-8 px-2"
                             onClick={(e) => {
                                 e.stopPropagation();
                                 setRejectModal(o._id);
                             }}
-                        />
+                        >
+                            <XCircle size={16} className="mr-1" />
+                        </Button>
                     </>
                 )}
 
-                <ActionButton
-                    icon={<Eye size={15} />}
-                    label="View"
-                    color="mint"
+                <Button
+                    variant="ghost"
+                    size="sm"
+                    className="text-primary-600 hover:text-primary-700 hover:bg-primary-50 h-8 px-2"
                     onClick={(e) => {
                         e.stopPropagation();
                         navigate(`/orders/${o._id}`);
                     }}
-                />
-            </td>
-        </tr>
+                >
+                    <Eye size={16} className="mr-1" />
+                </Button>
+
+                <Button
+                    variant="ghost"
+                    size="sm"
+                    className="text-slate-400 hover:text-slate-600 hover:bg-slate-100 h-8 px-2 opacity-0 group-hover:opacity-100 transition-opacity"
+                    onClick={(e) => showContextMenu(e, o)}
+                >
+                    <MoreVertical size={16} />
+                </Button>
+            </TableCell>
+        </TableRow>
     );
 
     return (
-        <div className="p-6 space-y-6">
+        <div className="space-y-6">
 
             {toast && (
-                <div className="fixed top-6 right-6 px-5 py-3 rounded-xl text-white shadow-lg z-50">
-                    {toast.msg}
+                <div className={`fixed top-6 right-6 px-6 py-4 rounded-xl text-white shadow-2xl z-50 animate-in slide-in-from-top-4 flex items-center gap-3 ${toast.type === "error" ? "bg-rose-600" : toast.type === "warning" ? "bg-amber-600" : "bg-emerald-600"}`}>
+                    <span className="font-medium">{toast.msg}</span>
                 </div>
             )}
 
             {/* HEADER */}
-            <div className="flex justify-between items-center">
-                <h1 className="text-3xl font-bold">Orders</h1>
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                <div>
+                    <h1 className="text-2xl font-bold tracking-tight text-slate-900">Orders</h1>
+                    <p className="text-sm text-slate-500 mt-1">Manage and track customer orders here.</p>
+                </div>
 
-                <div className="flex items-center gap-3">
-                    <button
-                        onClick={() => navigate("/createorder")}
-                        className="px-4 py-2 rounded-lg bg-[#00BFA6] text-white font-semibold shadow hover:bg-[#009f8b]"
-                    >
-                        + Create Order
-                    </button>
+                <Button onClick={() => navigate("/createorder")} icon={Plus}>
+                    Create Order
+                </Button>
+            </div>
 
-                    <div className="bg-white border rounded-xl px-4 py-1.5 shadow flex items-center w-80">
-                        <Search size={18} className="text-gray-400 mr-2" />
-                        <input
-                            className="flex-1 bg-transparent outline-none"
+            {/* FILTERS & SEARCH */}
+            <Card>
+                <CardContent className="p-4 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                    {/* TABS */}
+                    <div className="flex gap-2 bg-slate-100/80 p-1 rounded-lg w-full md:w-auto overflow-x-auto">
+                        <TabButton label="All" active={tab === "all"} onClick={() => setTab("all")} />
+                        <TabButton label="Pending" active={tab === "pending"} onClick={() => setTab("pending")} />
+                        <TabButton label="Confirmed" active={tab === "confirmed"} onClick={() => setTab("confirmed")} />
+                        <TabButton label="Rejected" active={tab === "rejected"} onClick={() => setTab("rejected")} />
+                    </div>
+
+                    <div className="relative w-full md:w-80">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                        <Input
                             placeholder="Search customer or phone..."
                             value={search}
                             onChange={(e) => setSearch(e.target.value)}
+                            className="pl-9 bg-slate-50 border-slate-200"
                         />
                     </div>
-                </div>
-            </div>
-
-            {/* TABS */}
-            <div className="flex gap-2 bg-white shadow p-2 rounded-xl w-fit">
-                <TabButton label="All" active={tab === "all"} onClick={() => setTab("all")} />
-                <TabButton label="Pending" active={tab === "pending"} onClick={() => setTab("pending")} />
-                <TabButton label="Confirmed" active={tab === "confirmed"} onClick={() => setTab("confirmed")} />
-                <TabButton label="Rejected" active={tab === "rejected"} onClick={() => setTab("rejected")} />
-            </div>
+                </CardContent>
+            </Card>
 
             {/* TABLE */}
-            <div className="bg-white rounded-2xl shadow-lg border overflow-hidden">
-                <table className="min-w-full text-sm">
-                    <thead className="bg-[#E0FFF5]">
-                        <tr>
-                            <th className="p-3 text-left">Date</th>
-                            <th className="p-3 text-left">Name</th>
-                            <th className="p-3 text-left">Phone</th>
-                            <th className="p-3 text-left">Status</th>
+            <Card>
+                <div className="overflow-x-auto">
+                    <Table className="min-w-full text-sm">
+                        <TableHeader>
+                            <TableRow>
+                                <TableHead>Date</TableHead>
+                                <TableHead>Customer Info</TableHead>
+                                <TableHead>Status</TableHead>
 
-                            {tab === "confirmed" && <th className="p-3 text-left">Amount</th>}
-                            {tab === "rejected" && <th className="p-3 text-left">Reason</th>}
+                                {tab === "confirmed" && <TableHead className="text-right">Amount</TableHead>}
+                                {tab === "rejected" && <TableHead>Reason</TableHead>}
 
-                            <th className="p-3 text-left">Actions</th>
-                        </tr>
-                    </thead>
+                                <TableHead className="text-right sticky right-0 bg-slate-50/90 backdrop-blur z-20 shadow-[-4px_0_10px_-4px_rgba(0,0,0,0.02)] border-l border-slate-100">Actions</TableHead>
+                            </TableRow>
+                        </TableHeader>
 
-                    <tbody>
-                        {orders.map(renderRow)}
+                        <TableBody>
+                            {orders.map(renderRow)}
 
-                        {orders.length === 0 && (
-                            <tr>
-                                <td colSpan="6" className="text-center py-6 text-gray-500 italic">
-                                    No orders found.
-                                </td>
-                            </tr>
-                        )}
-                    </tbody>
-                </table>
-            </div>
+                            {orders.length === 0 && (
+                                <TableRow>
+                                    <TableCell colSpan="6" className="text-center py-12 text-slate-500">
+                                        No orders found matching your criteria.
+                                    </TableCell>
+                                </TableRow>
+                            )}
+                        </TableBody>
+                    </Table>
+                </div>
+            </Card>
 
             {/* CONTEXT MENU */}
             {contextMenu && (
@@ -332,7 +364,7 @@ function TabButton({ label, active, onClick }) {
     return (
         <button
             onClick={onClick}
-            className={`px-4 py-1 rounded-lg text-sm font-semibold ${active ? "bg-[#00BFA6] text-white" : "text-gray-700"
+            className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${active ? "bg-white text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-700 hover:bg-slate-200/50"
                 }`}
         >
             {label}
@@ -342,36 +374,22 @@ function TabButton({ label, active, onClick }) {
 
 function StatusBadge({ status }) {
     const map = {
-        pending: "bg-yellow-100 text-yellow-700",
-        confirmed: "bg-green-100 text-green-700",
-        processing: "bg-blue-100 text-blue-700",
-        ready_for_delivery: "bg-purple-100 text-purple-700",
-        completed: "bg-gray-100 text-gray-700",
-        rejected: "bg-red-100 text-red-700",
+        pending: "warning",
+        confirmed: "success",
+        processing: "info",
+        ready_for_delivery: "primary",
+        completed: "default",
+        rejected: "danger",
     };
 
-    return (
-        <span className={`px-2 py-1 rounded-full text-xs ${map[status] || "bg-gray-100"}`}>
-            {status}
-        </span>
-    );
-}
-
-function ActionButton({ icon, label, color, onClick }) {
-    const style = {
-        green: "text-green-600 hover:bg-green-100",
-        red: "text-red-600 hover:bg-red-100",
-        mint: "text-[#00BFA6] hover:bg-[#E0FFF5]",
-        blue: "text-blue-600 hover:bg-blue-100",
-    };
+    const labels = {
+        ready_for_delivery: "Ready",
+    }
 
     return (
-        <button
-            onClick={onClick}
-            className={`px-3 py-1 rounded-md text-sm flex items-center gap-1 ${style[color]}`}
-        >
-            {icon} {label}
-        </button>
+        <Badge variant={map[status] || "default"}>
+            {labels[status] || status.charAt(0).toUpperCase() + status.slice(1)}
+        </Badge>
     );
 }
 
@@ -382,32 +400,33 @@ function AmountModal({ open, onClose, onSubmit }) {
     if (!open) return null;
 
     return (
-        <div className="fixed inset-0 bg-black/40 flex justify-center items-center z-50" onClick={onClose}>
-            <div
-                className="bg-white p-6 rounded-xl w-80"
-                onClick={(e) => e.stopPropagation()}
-            >
-                <h2 className="font-bold mb-3">Enter Amount</h2>
+        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm flex justify-center items-center z-50 p-4" onClick={onClose}>
+            <Card className="w-full max-w-sm flex flex-col" onClick={(e) => e.stopPropagation()}>
+                <CardHeader>
+                    <CardTitle>Confirm Order</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                    <div>
+                        <Label>Final Sale Amount (₹)</Label>
+                        <Input
+                            type="number"
+                            value={amount}
+                            onChange={(e) => setAmount(e.target.value)}
+                            placeholder="Enter final negotiated amount"
+                            autoFocus
+                        />
+                    </div>
 
-                <input
-                    type="number"
-                    value={amount}
-                    onChange={(e) => setAmount(e.target.value)}
-                    className="border px-3 py-2 w-full rounded"
-                />
-
-                <div className="flex justify-end mt-3 gap-2">
-                    <button onClick={onClose} className="px-3 py-1 bg-gray-200 rounded">
-                        Cancel
-                    </button>
-                    <button
-                        onClick={() => onSubmit(amount)}
-                        className="px-3 py-1 bg-green-600 text-white rounded"
-                    >
-                        Confirm
-                    </button>
-                </div>
-            </div>
+                    <div className="flex justify-end gap-3 pt-4 border-t border-slate-100">
+                        <Button variant="secondary" onClick={onClose}>
+                            Cancel
+                        </Button>
+                        <Button variant="primary" onClick={() => onSubmit(amount)}>
+                            Confirm Order
+                        </Button>
+                    </div>
+                </CardContent>
+            </Card>
         </div>
     );
 }
@@ -415,32 +434,33 @@ function AmountModal({ open, onClose, onSubmit }) {
 /* ---- Reject Modal ---- */
 function RejectModal({ onClose, onSubmit, reason, setReason }) {
     return (
-        <div className="fixed inset-0 bg-black/40 flex justify-center items-center z-50" onClick={onClose}>
-            <div
-                className="bg-white p-6 rounded-xl w-80"
-                onClick={(e) => e.stopPropagation()}
-            >
-                <h2 className="font-bold mb-3">Reject Order</h2>
+        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm flex justify-center items-center z-50 p-4" onClick={onClose}>
+            <Card className="w-full max-w-sm" onClick={(e) => e.stopPropagation()}>
+                <CardHeader>
+                    <CardTitle className="text-rose-600">Reject Order</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                    <div>
+                        <Label>Reason for rejection</Label>
+                        <textarea
+                            className="flex min-h-[100px] w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent disabled:cursor-not-allowed disabled:opacity-50"
+                            value={reason}
+                            onChange={(e) => setReason(e.target.value)}
+                            placeholder="Tell us why this order is being rejected..."
+                            autoFocus
+                        />
+                    </div>
 
-                <textarea
-                    className="border rounded w-full px-3 py-2"
-                    value={reason}
-                    onChange={(e) => setReason(e.target.value)}
-                    placeholder="Reason..."
-                />
-
-                <div className="flex justify-end mt-3 gap-2">
-                    <button onClick={onClose} className="px-3 py-1 bg-gray-200 rounded">
-                        Cancel
-                    </button>
-                    <button
-                        onClick={onSubmit}
-                        className="px-3 py-1 bg-red-600 text-white rounded"
-                    >
-                        Reject
-                    </button>
-                </div>
-            </div>
+                    <div className="flex justify-end gap-3 pt-4 border-t border-slate-100">
+                        <Button variant="secondary" onClick={onClose}>
+                            Cancel
+                        </Button>
+                        <Button variant="danger" onClick={onSubmit}>
+                            Reject Order
+                        </Button>
+                    </div>
+                </CardContent>
+            </Card>
         </div>
     );
 }

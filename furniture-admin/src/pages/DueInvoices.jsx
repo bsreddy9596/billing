@@ -1,8 +1,14 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import api from "../api/api";
+import { Card, CardContent } from "../components/ui/Card";
+import { Input } from "../components/ui/Input";
+import Button from "../components/ui/Button";
+import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "../components/ui/Table";
+import Badge from "../components/ui/Badge";
+import { Search, FileText, AlertCircle } from "lucide-react";
 
-const money = (v) => `₹${Number(v || 0).toLocaleString("en-IN")}`;
+const money = (v) => `₹${Number(v || 0).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
 export default function DueInvoices() {
     const navigate = useNavigate();
@@ -62,150 +68,183 @@ export default function DueInvoices() {
     }, [filteredInvoices]);
 
     return (
-        <div className="p-4 md:p-6 bg-gray-50 min-h-screen">
-
+        <div className="space-y-6">
             {/* ================= HEADER ================= */}
-            <div className="mb-4 space-y-3">
-                <h1 className="text-xl md:text-2xl font-bold">
-                    Due Invoices
-                    {typeFilter === "order" && " – Orders"}
-                    {typeFilter === "product" && " – Products"}
-                </h1>
-
-                <input
-                    type="text"
-                    placeholder="Search name / phone / invoice no..."
-                    className="border px-3 py-2 rounded w-full md:w-96 text-sm"
-                    value={search}
-                    onChange={(e) => setSearch(e.target.value)}
-                />
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                <div>
+                    <h1 className="text-2xl font-bold tracking-tight text-slate-900 flex items-center gap-2">
+                        <AlertCircle className="text-rose-500" />
+                        Due Invoices
+                        {typeFilter === "order" && <span className="text-slate-500 font-normal text-lg ml-2">– Orders</span>}
+                        {typeFilter === "product" && <span className="text-slate-500 font-normal text-lg ml-2">– Products</span>}
+                    </h1>
+                    <p className="text-sm text-slate-500 mt-1">Track and manage outstanding payments</p>
+                </div>
             </div>
 
-            {/* ================= SUMMARY ================= */}
-            <div className="mb-5 bg-white rounded-xl shadow p-4 flex justify-between items-center">
-                <div>
-                    <div className="text-sm text-gray-500">Total Due Amount</div>
-                    <div className="text-2xl font-bold text-red-600">
-                        {money(totalDue)}
+            {/* ================= FILTERS & SUMMARY ================= */}
+            <div className="flex flex-col lg:flex-row gap-6">
+                <div className="flex-1">
+                    <div className="relative max-w-md">
+                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                            <Search className="h-5 w-5 text-slate-400" />
+                        </div>
+                        <input
+                            type="text"
+                            className="block w-full pl-10 pr-3 py-2 border border-slate-300 rounded-lg focus:ring-primary-500 focus:border-primary-500 sm:text-sm bg-white"
+                            placeholder="Search name, phone, or invoice no..."
+                            value={search}
+                            onChange={(e) => setSearch(e.target.value)}
+                        />
                     </div>
                 </div>
 
-                <div className="text-sm text-gray-500">
-                    {filteredInvoices.length} invoices
-                </div>
+                <Card className="bg-rose-50 border-rose-100 flex-shrink-0 w-full lg:w-72">
+                    <CardContent className="p-4 flex justify-between items-center">
+                        <div>
+                            <div className="text-xs font-semibold text-rose-800 uppercase tracking-wider">Total Due Amount</div>
+                            <div className="text-2xl font-bold text-rose-600 mt-1">
+                                {money(totalDue)}
+                            </div>
+                        </div>
+                        <div className="text-sm font-medium text-rose-700 bg-rose-100 px-3 py-1 rounded-full">
+                            {filteredInvoices.length} {filteredInvoices.length === 1 ? 'invoice' : 'invoices'}
+                        </div>
+                    </CardContent>
+                </Card>
             </div>
 
             {/* ================= DESKTOP TABLE ================= */}
-            <div className="hidden md:block bg-white rounded-xl shadow overflow-hidden">
-                <table className="w-full text-sm">
-                    <thead className="bg-gray-100">
-                        <tr>
-                            <th className="p-3 text-left">Customer</th>
-                            <th className="p-3">Mobile</th>
-                            <th className="p-3">Invoice</th>
-                            <th className="p-3">Type</th>
-                            <th className="p-3 text-right">Total</th>
-                            <th className="p-3 text-right">Paid</th>
-                            <th className="p-3 text-right">Due</th>
-                            <th className="p-3 text-right">Action</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {!loading &&
-                            filteredInvoices.map((inv) => (
-                                <tr key={inv._id} className="border-t">
-                                    <td className="p-3">
-                                        <div className="font-medium">{inv.customerName}</div>
-                                        <div className="text-xs text-gray-500">
-                                            {inv.customerAddress || "-"}
-                                        </div>
-                                    </td>
-                                    <td className="p-3">{inv.customerPhone || "-"}</td>
-                                    <td className="p-3">{inv.invoiceNumber}</td>
-                                    <td className="p-3 capitalize">{inv.invoiceType}</td>
-                                    <td className="p-3 text-right">{money(inv.total)}</td>
-                                    <td className="p-3 text-right text-green-600">
-                                        {money(inv.paidAmount)}
-                                    </td>
-                                    <td className="p-3 text-right text-red-600 font-semibold">
-                                        {money(inv.dueAmount)}
-                                    </td>
-                                    <td className="p-3 text-right">
-                                        <button
-                                            onClick={() =>
-                                                navigate(
-                                                    inv.invoiceType === "order"
-                                                        ? `/invoice/order/${inv._id}`
-                                                        : `/invoice/product/${inv._id}`
-                                                )
-                                            }
-                                            className="text-[#0e9a86] hover:underline"
-                                        >
-                                            View
-                                        </button>
-                                    </td>
-                                </tr>
-                            ))}
-
-                        {!loading && filteredInvoices.length === 0 && (
-                            <tr>
-                                <td colSpan="8" className="p-6 text-center text-gray-400">
-                                    No due invoices found
-                                </td>
-                            </tr>
-                        )}
-                    </tbody>
-                </table>
+            <div className="hidden md:block">
+                <Card>
+                    <div className="overflow-x-auto">
+                        <Table>
+                            <TableHeader>
+                                <TableRow>
+                                    <TableHead>Customer</TableHead>
+                                    <TableHead>Mobile</TableHead>
+                                    <TableHead>Invoice</TableHead>
+                                    <TableHead>Type</TableHead>
+                                    <TableHead className="text-right">Total</TableHead>
+                                    <TableHead className="text-right">Paid</TableHead>
+                                    <TableHead className="text-right">Due</TableHead>
+                                    <TableHead className="text-right sticky right-0 bg-slate-50/90 backdrop-blur z-20 shadow-[-4px_0_10px_-4px_rgba(0,0,0,0.02)] border-l border-slate-100">Action</TableHead>
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                                {loading ? (
+                                    <TableRow>
+                                        <TableCell colSpan="8" className="h-32 text-center text-slate-500">
+                                            Loading due invoices...
+                                        </TableCell>
+                                    </TableRow>
+                                ) : filteredInvoices.length === 0 ? (
+                                    <TableRow>
+                                        <TableCell colSpan="8" className="h-32 text-center text-slate-500">
+                                            No due invoices found.
+                                        </TableCell>
+                                    </TableRow>
+                                ) : (
+                                    filteredInvoices.map((inv) => (
+                                        <TableRow key={inv._id} className="group">
+                                            <TableCell>
+                                                <div className="font-semibold text-slate-800">{inv.customerName}</div>
+                                                <div className="text-xs text-slate-500 mt-0.5 truncate max-w-[200px]">
+                                                    {inv.customerAddress || "No address provided"}
+                                                </div>
+                                            </TableCell>
+                                            <TableCell className="text-slate-600">{inv.customerPhone || "—"}</TableCell>
+                                            <TableCell className="font-medium text-slate-700">{inv.invoiceNumber}</TableCell>
+                                            <TableCell className="capitalize text-slate-600">{inv.invoiceType}</TableCell>
+                                            <TableCell className="text-right font-medium text-slate-900">{money(inv.total)}</TableCell>
+                                            <TableCell className="text-right font-medium text-emerald-600">
+                                                {money(inv.paidAmount)}
+                                            </TableCell>
+                                            <TableCell className="text-right font-bold text-rose-600 bg-rose-50/50">
+                                                {money(inv.dueAmount)}
+                                            </TableCell>
+                                            <TableCell className="text-right sticky right-0 bg-white group-hover:bg-slate-50/80 z-10 shadow-[-4px_0_10px_-4px_rgba(0,0,0,0.05)] border-l border-slate-100">
+                                                <Button
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    className="opacity-0 group-hover:opacity-100 transition-opacity"
+                                                    onClick={() =>
+                                                        navigate(
+                                                            inv.invoiceType === "order"
+                                                                ? `/invoice/order/${inv._id}`
+                                                                : `/invoice/product/${inv._id}`
+                                                        )
+                                                    }
+                                                    icon={FileText}
+                                                >
+                                                    View
+                                                </Button>
+                                            </TableCell>
+                                        </TableRow>
+                                    ))
+                                )}
+                            </TableBody>
+                        </Table>
+                    </div>
+                </Card>
             </div>
 
             {/* ================= MOBILE VIEW ================= */}
-            <div className="md:hidden space-y-3">
-                {filteredInvoices.map((inv) => (
-                    <div
-                        key={inv._id}
-                        className="bg-white rounded-xl shadow p-4 space-y-2"
-                    >
-                        <div className="flex justify-between">
-                            <div className="font-semibold">{inv.customerName}</div>
-                            <div className="text-red-600 font-bold">
-                                {money(inv.dueAmount)}
-                            </div>
-                        </div>
-
-                        <div className="text-sm text-gray-500">
-                            {inv.customerPhone || "-"}
-                        </div>
-
-                        <div className="text-sm">
-                            Invoice: <b>{inv.invoiceNumber}</b>
-                        </div>
-
-                        <div className="flex justify-between text-sm">
-                            <span>Total: {money(inv.total)}</span>
-                            <span className="text-green-600">
-                                Paid: {money(inv.paidAmount)}
-                            </span>
-                        </div>
-
-                        <button
-                            onClick={() =>
-                                navigate(
-                                    inv.invoiceType === "order"
-                                        ? `/invoice/order/${inv._id}`
-                                        : `/invoice/product/${inv._id}`
-                                )
-                            }
-                            className="mt-2 w-full border rounded py-2 text-[#0e9a86]"
-                        >
-                            View Invoice
-                        </button>
+            <div className="md:hidden space-y-4">
+                {loading ? (
+                    <div className="text-center py-8 text-slate-500">Loading...</div>
+                ) : filteredInvoices.length === 0 ? (
+                    <div className="text-center py-8 text-slate-500 bg-white rounded-xl border border-slate-200 border-dashed">
+                        No due invoices found.
                     </div>
-                ))}
-
-                {!loading && filteredInvoices.length === 0 && (
-                    <div className="text-center text-gray-400 py-6">
-                        No due invoices found
-                    </div>
+                ) : (
+                    filteredInvoices.map((inv) => (
+                        <Card key={inv._id} className="overflow-hidden">
+                            <CardContent className="p-0">
+                                <div className="p-4 border-b border-slate-100 bg-slate-50/50 flex justify-between items-start">
+                                    <div>
+                                        <div className="font-semibold text-slate-900">{inv.customerName}</div>
+                                        <div className="text-sm text-slate-500 flex items-center gap-2 mt-1">
+                                            <span>{inv.customerPhone || "No phone"}</span>
+                                        </div>
+                                    </div>
+                                    <Badge variant="danger" className="shrink-0 text-sm py-1 px-2 shadow-sm">
+                                        Due: {money(inv.dueAmount)}
+                                    </Badge>
+                                </div>
+                                <div className="p-4 space-y-3">
+                                    <div className="flex justify-between items-center text-sm">
+                                        <span className="text-slate-500">Invoice No:</span>
+                                        <span className="font-medium text-slate-900">{inv.invoiceNumber}</span>
+                                    </div>
+                                    <div className="flex justify-between items-center text-sm">
+                                        <span className="text-slate-500">Total Amount:</span>
+                                        <span className="font-medium text-slate-900">{money(inv.total)}</span>
+                                    </div>
+                                    <div className="flex justify-between items-center text-sm">
+                                        <span className="text-slate-500">Paid Amount:</span>
+                                        <span className="font-medium text-emerald-600">{money(inv.paidAmount)}</span>
+                                    </div>
+                                </div>
+                                <div className="p-4 border-t border-slate-100 bg-slate-50">
+                                    <Button
+                                        variant="outline"
+                                        className="w-full bg-white"
+                                        icon={FileText}
+                                        onClick={() =>
+                                            navigate(
+                                                inv.invoiceType === "order"
+                                                    ? `/invoice/order/${inv._id}`
+                                                    : `/invoice/product/${inv._id}`
+                                            )
+                                        }
+                                    >
+                                        View Invoice
+                                    </Button>
+                                </div>
+                            </CardContent>
+                        </Card>
+                    ))
                 )}
             </div>
         </div>

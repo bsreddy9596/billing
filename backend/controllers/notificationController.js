@@ -1,20 +1,12 @@
-const Notification = require("../models/Notification");
+const notificationService = require("../services/notificationService");
 const logger = require("../config/logger");
-const mongoose = require("mongoose");
 
 /**
  * 🔔 Get all notifications for logged-in user or their role
  */
 async function getNotifications(req, res, next) {
   try {
-    const filter = {
-      $or: [{ toUser: req.user._id }, { toRole: req.user.role }],
-    };
-
-    const notifications = await Notification.find(filter)
-      .sort({ createdAt: -1 })
-      .limit(100)
-      .lean();
+    const notifications = await notificationService.getNotifications(req.user._id, req.user.role);
 
     res.json({
       success: true,
@@ -32,22 +24,13 @@ async function getNotifications(req, res, next) {
  */
 async function markAsRead(req, res, next) {
   try {
-    const { id } = req.params;
-    if (!mongoose.Types.ObjectId.isValid(id))
-      return res.status(400).json({ success: false, message: "Invalid ID" });
+    const result = await notificationService.markAsRead(req.params.id, req.user._id, req.user.role);
 
-    const notification = await Notification.findOneAndUpdate(
-      { _id: id, $or: [{ toUser: req.user._id }, { toRole: req.user.role }] },
-      { read: true },
-      { new: true }
-    );
+    if (result.error) {
+      return res.status(result.status).json({ success: false, message: result.error });
+    }
 
-    if (!notification)
-      return res
-        .status(404)
-        .json({ success: false, message: "Notification not found" });
-
-    res.json({ success: true, data: notification });
+    res.json({ success: true, data: result });
   } catch (err) {
     logger.error("Mark notification read error: %s", err.message);
     next(err);
@@ -59,13 +42,7 @@ async function markAsRead(req, res, next) {
  */
 async function markAllAsRead(req, res, next) {
   try {
-    await Notification.updateMany(
-      {
-        $or: [{ toUser: req.user._id }, { toRole: req.user.role }],
-        read: false,
-      },
-      { read: true }
-    );
+    await notificationService.markAllAsRead(req.user._id, req.user.role);
     res.json({ success: true, message: "All notifications marked as read" });
   } catch (err) {
     logger.error("Mark all read error: %s", err.message);
@@ -78,21 +55,13 @@ async function markAllAsRead(req, res, next) {
  */
 async function deleteNotification(req, res, next) {
   try {
-    const { id } = req.params;
-    if (!mongoose.Types.ObjectId.isValid(id))
-      return res.status(400).json({ success: false, message: "Invalid ID" });
+    const result = await notificationService.deleteNotification(req.params.id, req.user._id, req.user.role);
 
-    const result = await Notification.findOneAndDelete({
-      _id: id,
-      $or: [{ toUser: req.user._id }, { toRole: req.user.role }],
-    });
+    if (result.error) {
+      return res.status(result.status).json({ success: false, message: result.error });
+    }
 
-    if (!result)
-      return res
-        .status(404)
-        .json({ success: false, message: "Notification not found" });
-
-    logger.info("Notification deleted: %s", id);
+    logger.info("Notification deleted: %s", req.params.id);
     res.json({ success: true, message: "Deleted" });
   } catch (err) {
     logger.error("Delete notification error: %s", err.message);
@@ -105,9 +74,7 @@ async function deleteNotification(req, res, next) {
  */
 async function clearAll(req, res, next) {
   try {
-    await Notification.deleteMany({
-      $or: [{ toUser: req.user._id }, { toRole: req.user.role }],
-    });
+    await notificationService.clearAll(req.user._id, req.user.role);
 
     logger.info("All notifications cleared by %s", req.user._id);
     res.json({ success: true, message: "All notifications cleared" });

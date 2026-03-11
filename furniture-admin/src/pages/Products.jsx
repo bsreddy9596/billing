@@ -1,6 +1,11 @@
 import { useEffect, useState } from "react";
 import api from "../api/api";
-import { Plus, X, Upload, Pencil, Trash2 } from "lucide-react";
+import { Plus, X, Upload, Pencil, Trash2, Search, Filter } from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/Card";
+import Button from "../components/ui/Button";
+import { Input, Label } from "../components/ui/Input";
+import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "../components/ui/Table";
+import Badge from "../components/ui/Badge";
 
 const PLACEHOLDER =
     "https://via.placeholder.com/80x60.png?text=Product";
@@ -107,191 +112,206 @@ export default function Products() {
     );
 
     return (
-        <div className="p-8 bg-gray-50 min-h-screen">
+        <div className="space-y-6">
             {/* HEADER */}
-            <div className="flex justify-between items-center mb-6">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                 <div>
-                    <h1 className="text-2xl font-semibold">FURNITURE</h1>
-                    <p className="text-sm text-gray-500">Products</p>
+                    <h1 className="text-2xl font-bold tracking-tight text-slate-900">Products Inventory</h1>
+                    <p className="text-sm text-slate-500 mt-1">Manage your store's items, pricing, and stock.</p>
                 </div>
 
-                <button
-                    onClick={() => setOpen(true)}
-                    className="flex items-center gap-2 bg-[#00BFA6] text-white px-5 py-2 rounded-md shadow"
-                >
-                    <Plus size={16} /> Add Product
-                </button>
+                <Button onClick={() => setOpen(true)} icon={Plus}>
+                    Add Product
+                </Button>
             </div>
 
-            {/* SEARCH */}
-            <input
-                type="text"
-                placeholder="Search product..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="mb-4 w-64 border px-3 py-2 rounded-md text-sm"
-            />
+            {/* SEARCH & FILTERS */}
+            <Card>
+                <CardContent className="p-4 flex flex-col sm:flex-row gap-4">
+                    <div className="relative flex-1">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                        <Input
+                            placeholder="Search products by name..."
+                            value={search}
+                            onChange={(e) => setSearch(e.target.value)}
+                            className="pl-9"
+                        />
+                    </div>
+                </CardContent>
+            </Card>
 
             {/* TABLE */}
-            <div className="bg-white border rounded-md overflow-hidden">
-                <table className="w-full text-sm">
-                    <thead className="bg-gray-100 border-b text-xs uppercase">
-                        <tr>
-                            <th className="p-4 text-left">Image</th>
-                            <th className="p-4 text-left">Name</th>
-                            <th className="p-4 text-left">Brand</th>
-                            <th className="p-4 text-center">Qty</th>
-                            <th className="p-4 text-right">Buy</th>
-                            <th className="p-4 text-right">Sell</th>
-                            <th className="p-4 text-center">Actions</th>
-                        </tr>
-                    </thead>
+            <Card>
+                <div className="overflow-x-auto">
+                    <Table>
+                        <TableHeader>
+                            <TableRow>
+                                <TableHead className="w-[100px]">Image</TableHead>
+                                <TableHead>Product Details</TableHead>
+                                <TableHead className="text-center">Stock Info</TableHead>
+                                <TableHead className="text-right">Buy Price</TableHead>
+                                <TableHead className="text-right">Sell Price</TableHead>
+                                <TableHead className="text-right sticky right-0 bg-slate-50/90 backdrop-blur z-20 shadow-[-4px_0_10px_-4px_rgba(0,0,0,0.02)] border-l border-slate-100">Actions</TableHead>
+                            </TableRow>
+                        </TableHeader>
 
-                    <tbody>
-                        {filtered.length === 0 && (
-                            <tr>
-                                <td colSpan="7" className="p-6 text-center text-gray-400">
-                                    No products found
-                                </td>
-                            </tr>
-                        )}
+                        <TableBody>
+                            {filtered.length === 0 && (
+                                <TableRow>
+                                    <TableCell colSpan={6} className="h-32 text-center text-slate-500">
+                                        No products found matching your search.
+                                    </TableCell>
+                                </TableRow>
+                            )}
 
-                        {filtered.map((p) => (
-                            <tr
-                                key={p._id}
-                                className={`border-b ${p.stockQty <= 3 ? "bg-red-50" : ""
-                                    }`}
-                            >
-                                <td className="p-4">
-                                    <img
-                                        src={p.image || PLACEHOLDER}
-                                        className="w-20 h-14 object-cover rounded"
-                                    />
-                                </td>
-                                <td className="p-4 font-semibold">{p.name}</td>
-                                <td className="p-4 text-gray-600">{p.brand || "—"}</td>
-                                <td
-                                    className={`p-4 text-center font-semibold ${p.stockQty <= 3 ? "text-red-600" : ""
-                                        }`}
-                                >
-                                    {p.stockQty || 0}
-                                </td>
-                                <td className="p-4 text-right">
-                                    {p.buyPrice ? `₹${p.buyPrice}` : "—"}
-                                </td>
-                                <td className="p-4 text-right font-semibold">
-                                    ₹{p.sellPrice}
-                                </td>
-                                <td className="p-4 text-center flex gap-3 justify-center">
-                                    <button
-                                        onClick={() => handleEdit(p)}
-                                        className="text-blue-600"
-                                    >
-                                        <Pencil size={16} />
-                                    </button>
-                                    <button
-                                        onClick={() => handleDelete(p._id)}
-                                        className="text-red-600"
-                                    >
-                                        <Trash2 size={16} />
-                                    </button>
-                                </td>
-                            </tr>
-                        ))}
-                    </tbody>
-                </table>
-            </div>
+                            {filtered.map((p) => (
+                                <TableRow key={p._id} className={p.stockQty <= 3 ? "bg-rose-50/50" : ""}>
+                                    <TableCell>
+                                        <div className="h-16 w-16 rounded-lg overflow-hidden border border-slate-200 bg-white">
+                                            <img
+                                                src={p.image || PLACEHOLDER}
+                                                alt={p.name}
+                                                className="w-full h-full object-cover"
+                                            />
+                                        </div>
+                                    </TableCell>
+                                    <TableCell>
+                                        <div className="font-semibold text-slate-900">{p.name}</div>
+                                        <div className="text-sm text-slate-500">{p.brand || "Generic"}</div>
+                                    </TableCell>
+                                    <TableCell className="text-center">
+                                        <div className={`font-semibold text-lg ${p.stockQty <= 3 ? "text-rose-600" : "text-slate-700"}`}>
+                                            {p.stockQty || 0}
+                                        </div>
+                                        {p.stockQty <= 3 && (
+                                            <Badge variant="danger" className="mt-1">
+                                                Low Stock
+                                            </Badge>
+                                        )}
+                                    </TableCell>
+                                    <TableCell className="text-right font-medium text-slate-600">
+                                        {p.buyPrice ? `₹${p.buyPrice.toLocaleString()}` : "—"}
+                                    </TableCell>
+                                    <TableCell className="text-right text-base font-bold text-slate-900">
+                                        ₹{p.sellPrice.toLocaleString()}
+                                    </TableCell>
+                                    <TableCell className="text-right space-x-2 sticky right-0 bg-white group-hover:bg-slate-50/80 z-10 shadow-[-4px_0_10px_-4px_rgba(0,0,0,0.05)] border-l border-slate-100">
+                                        <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            onClick={() => handleEdit(p)}
+                                            className="text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                                            icon={Pencil}
+                                        />
+                                        <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            onClick={() => handleDelete(p._id)}
+                                            className="text-rose-600 hover:text-rose-700 hover:bg-rose-50"
+                                            icon={Trash2}
+                                        />
+                                    </TableCell>
+                                </TableRow>
+                            ))}
+                        </TableBody>
+                    </Table>
+                </div>
+            </Card>
 
             {/* MODAL */}
             {open && (
-                <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
-                    <div className="bg-white w-[420px] rounded-xl p-6 relative">
-                        <button
-                            onClick={resetModal}
-                            className="absolute top-4 right-4 text-gray-400"
-                        >
-                            <X />
-                        </button>
+                <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+                    <Card className="w-full max-w-lg shadow-xl outline-none" role="dialog" aria-modal="true">
+                        <CardHeader className="flex flex-row items-center justify-between pb-4">
+                            <CardTitle>{editing ? "Edit Product" : "Add New Product"}</CardTitle>
+                            <Button variant="ghost" size="sm" onClick={resetModal} className="h-8 w-8 p-0 rounded-full">
+                                <X className="h-4 w-4" />
+                            </Button>
+                        </CardHeader>
 
-                        <h2 className="text-lg font-semibold mb-4">
-                            {editing ? "Edit Product" : "Add Product"}
-                        </h2>
-
-                        {/* IMAGE */}
-                        <label className="block mb-3">
-                            <div className="border-dashed border-2 p-4 rounded-md text-center cursor-pointer">
-                                {form.preview ? (
-                                    <img
-                                        src={form.preview}
-                                        className="mx-auto h-24 object-cover"
+                        <CardContent className="space-y-4">
+                            {/* IMAGE */}
+                            <div>
+                                <Label>Product Image</Label>
+                                <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-slate-300 border-dashed rounded-lg cursor-pointer bg-slate-50 hover:bg-slate-100 transition-colors overflow-hidden">
+                                    {form.preview ? (
+                                        <img
+                                            src={form.preview}
+                                            alt="Preview"
+                                            className="h-full object-cover"
+                                        />
+                                    ) : (
+                                        <div className="flex flex-col items-center justify-center pt-5 pb-6 text-slate-500">
+                                            <Upload className="w-6 h-6 mb-2" />
+                                            <p className="text-sm font-medium">Click to upload image</p>
+                                        </div>
+                                    )}
+                                    <input
+                                        type="file"
+                                        accept="image/*"
+                                        className="hidden"
+                                        onChange={(e) => handleImage(e.target.files[0])}
                                     />
-                                ) : (
-                                    <div className="text-gray-400 flex flex-col items-center">
-                                        <Upload size={20} />
-                                        Upload Image
-                                    </div>
-                                )}
+                                </label>
                             </div>
-                            <input
-                                type="file"
-                                accept="image/*"
-                                className="hidden"
-                                onChange={(e) => handleImage(e.target.files[0])}
-                            />
-                        </label>
 
-                        {/* INPUTS */}
-                        <input
-                            placeholder="Name"
-                            className="w-full border p-2 rounded mb-2"
-                            value={form.name}
-                            onChange={(e) =>
-                                setForm({ ...form, name: e.target.value })
-                            }
-                        />
-                        <input
-                            placeholder="Brand"
-                            className="w-full border p-2 rounded mb-2"
-                            value={form.brand}
-                            onChange={(e) =>
-                                setForm({ ...form, brand: e.target.value })
-                            }
-                        />
-                        <input
-                            placeholder="Quantity"
-                            type="number"
-                            className="w-full border p-2 rounded mb-2"
-                            value={form.qty}
-                            onChange={(e) =>
-                                setForm({ ...form, qty: e.target.value })
-                            }
-                        />
-                        <input
-                            placeholder="Buy Price"
-                            type="number"
-                            className="w-full border p-2 rounded mb-2"
-                            value={form.buyPrice}
-                            onChange={(e) =>
-                                setForm({ ...form, buyPrice: e.target.value })
-                            }
-                        />
-                        <input
-                            placeholder="Sell Price"
-                            type="number"
-                            className="w-full border p-2 rounded mb-4"
-                            value={form.sellPrice}
-                            onChange={(e) =>
-                                setForm({ ...form, sellPrice: e.target.value })
-                            }
-                        />
+                            {/* INPUTS */}
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="col-span-2">
+                                    <Label>Product Name</Label>
+                                    <Input
+                                        placeholder="e.g. Wooden Dining Table"
+                                        value={form.name}
+                                        onChange={(e) => setForm({ ...form, name: e.target.value })}
+                                    />
+                                </div>
+                                <div>
+                                    <Label>Brand</Label>
+                                    <Input
+                                        placeholder="e.g. IKEA"
+                                        value={form.brand}
+                                        onChange={(e) => setForm({ ...form, brand: e.target.value })}
+                                    />
+                                </div>
+                                <div>
+                                    <Label>Initial Stock Qty</Label>
+                                    <Input
+                                        type="number"
+                                        placeholder="0"
+                                        value={form.qty}
+                                        onChange={(e) => setForm({ ...form, qty: e.target.value })}
+                                    />
+                                </div>
+                                <div>
+                                    <Label>Buy Price (₹)</Label>
+                                    <Input
+                                        type="number"
+                                        placeholder="0.00"
+                                        value={form.buyPrice}
+                                        onChange={(e) => setForm({ ...form, buyPrice: e.target.value })}
+                                    />
+                                </div>
+                                <div>
+                                    <Label>Sell Price (₹)</Label>
+                                    <Input
+                                        type="number"
+                                        placeholder="0.00"
+                                        value={form.sellPrice}
+                                        onChange={(e) => setForm({ ...form, sellPrice: e.target.value })}
+                                    />
+                                </div>
+                            </div>
 
-                        <button
-                            onClick={handleSave}
-                            className="w-full bg-[#00BFA6] text-white py-2 rounded-md"
-                        >
-                            Save Product
-                        </button>
-                    </div>
+                            <div className="pt-4 flex justify-end gap-3 border-t border-slate-100 mt-6">
+                                <Button variant="secondary" onClick={resetModal}>
+                                    Cancel
+                                </Button>
+                                <Button onClick={handleSave}>
+                                    {editing ? "Save Changes" : "Add Product"}
+                                </Button>
+                            </div>
+                        </CardContent>
+                    </Card>
                 </div>
             )}
         </div>

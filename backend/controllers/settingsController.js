@@ -1,4 +1,4 @@
-const Setting = require("../models/Setting");
+const settingsService = require("../services/settingsService");
 const logger = require("../config/logger");
 
 /**
@@ -6,10 +6,7 @@ const logger = require("../config/logger");
  */
 async function getSettings(req, res, next) {
   try {
-    let settings = await Setting.findOne().lean();
-    if (!settings) {
-      settings = await Setting.create({});
-    }
+    const settings = await settingsService.getSettings();
     res.json({ success: true, data: settings });
   } catch (err) {
     logger.error("Get settings error: %s", err.message);
@@ -22,19 +19,7 @@ async function getSettings(req, res, next) {
  */
 async function updateSettings(req, res, next) {
   try {
-    const data = req.body;
-    let settings = await Setting.findOne();
-
-    if (!settings) {
-      settings = await Setting.create({
-        ...data,
-        updatedBy: req.user._id,
-      });
-    } else {
-      Object.assign(settings, data);
-      settings.updatedBy = req.user._id;
-      await settings.save();
-    }
+    const settings = await settingsService.updateSettings(req.body, req.user._id);
 
     logger.info("Settings updated by %s", req.user._id);
     res.json({ success: true, message: "Settings updated", data: settings });
@@ -49,8 +34,8 @@ async function updateSettings(req, res, next) {
  */
 async function resetSettings(req, res, next) {
   try {
-    await Setting.deleteMany({});
-    const defaults = await Setting.create({});
+    const defaults = await settingsService.resetSettings(req.user._id);
+
     logger.warn("Settings reset by %s", req.user._id);
     res.json({ success: true, message: "Settings reset", data: defaults });
   } catch (err) {

@@ -11,78 +11,40 @@ import {
     User2,
     X,
     Save,
+    MoreVertical
 } from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/Card";
+import Button from "../components/ui/Button";
+import { Input, Label } from "../components/ui/Input";
+import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "../components/ui/Table";
+import Badge from "../components/ui/Badge";
 
 /* -------------------------------------------------------------------------- */
-/* CUSTOM SELECT DROPDOWN                                                     */
-/* -------------------------------------------------------------------------- */
-function CustomSelect({ value, onChange, options, placeholder = "Select" }) {
-    const [open, setOpen] = useState(false);
-
-    return (
-        <div className="relative w-full text-sm">
-            <div
-                onClick={() => setOpen(!open)}
-                className="w-full border px-3 py-1.5 rounded-lg bg-white cursor-pointer flex justify-between items-center"
-            >
-                <span>{value ? options.find((o) => o.value === value)?.label : placeholder}</span>
-                <span className="text-gray-500">▼</span>
-            </div>
-
-            {open && (
-                <div className="absolute w-full bg-white border rounded-lg mt-1 shadow-lg z-50 text-sm">
-                    {options.map((opt) => (
-                        <div
-                            key={opt.value}
-                            onClick={() => {
-                                onChange(opt.value);
-                                setOpen(false);
-                            }}
-                            className="px-3 py-2 cursor-pointer hover:bg-[#00A28E] hover:text-white"
-                        >
-                            {opt.label}
-                        </div>
-                    ))}
-                </div>
-            )}
-        </div>
-    );
-}
-
-/* -------------------------------------------------------------------------- */
-/* CONTEXT MENU (RIGHT CLICK)                                                 */
+/* CONTEXT MENU (RIGHT CLICK / ACTION MENU)                                   */
 /* -------------------------------------------------------------------------- */
 function ContextMenu({ x, y, onEdit, onDelete }) {
     return (
         <div
-            className="fixed bg-white border shadow-xl rounded-lg w-40 py-2 z-50 animate-[fadeIn_.15s_ease-out]"
+            className="fixed bg-white border shadow-xl rounded-lg w-40 py-2 z-50 animate-in fade-in zoom-in duration-200"
             style={{ top: y, left: x }}
+            onClick={(e) => e.stopPropagation()}
         >
             <button
                 onClick={onEdit}
-                className="w-full px-3 py-2 flex items-center gap-2 hover:bg-gray-100"
+                className="w-full px-4 py-2 flex items-center gap-3 hover:bg-slate-50 text-sm font-medium text-slate-700"
             >
-                <Edit size={16} /> Edit
+                <Edit size={16} className="text-slate-400" /> Edit
             </button>
 
             <button
                 onClick={onDelete}
-                className="w-full px-3 py-2 flex items-center gap-2 hover:bg-red-100 text-red-600"
+                className="w-full px-4 py-2 flex items-center gap-3 hover:bg-rose-50 text-sm font-medium text-rose-600"
             >
-                <Trash2 size={16} /> Delete
+                <Trash2 size={16} className="text-rose-400" /> Delete
             </button>
         </div>
     );
 }
-
-// animation
-const style = document.createElement("style");
-style.innerHTML = `
-@keyframes fadeIn {
-  0% { opacity:0; transform:scale(.92); }
-  100% { opacity:1; transform:scale(1); }
-}`;
-document.head.appendChild(style);
 
 /* -------------------------------------------------------------------------- */
 /* MAIN PAGE                                                                  */
@@ -191,14 +153,17 @@ export default function EmployeeList() {
     /* UI START                                                               */
     /* ---------------------------------------------------------------------- */
     return (
-        <div className="p-6 space-y-6 min-h-screen bg-gradient-to-br from-white via-[#F0FFFB] to-[#E6FFF8] text-sm">
+        <div className="space-y-6">
             <Toaster />
 
             {/* HEADER */}
-            <div className="flex justify-between items-center">
-                <h1 className="text-2xl font-extrabold">👥 Employee Management</h1>
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                <div>
+                    <h1 className="text-2xl font-bold tracking-tight text-slate-900">Employee Management</h1>
+                    <p className="text-sm text-slate-500 mt-1">Manage staff, roles, and access credentials.</p>
+                </div>
 
-                <button
+                <Button
                     onClick={() => {
                         setEditData(null);
                         setForm({
@@ -212,79 +177,109 @@ export default function EmployeeList() {
                         });
                         setShowModal(true);
                     }}
-                    className="flex items-center gap-2 bg-[#00BFA6] text-white px-4 py-2 rounded-xl shadow"
+                    icon={UserPlus}
                 >
-                    <UserPlus size={18} /> Add Employee
-                </button>
+                    Add Employee
+                </Button>
             </div>
 
-            {/* SEARCH */}
-            <div className="flex items-center gap-3 bg-white p-3 rounded-xl shadow border">
-                <div className="flex items-center gap-2 bg-gray-50 px-3 py-1.5 rounded-lg border w-56">
-                    <Search size={16} className="text-gray-500" />
-                    <input
-                        type="text"
-                        placeholder="Search..."
-                        value={search}
-                        onChange={(e) => setSearch(e.target.value)}
-                        className="w-full bg-transparent outline-none text-sm"
-                    />
-                </div>
+            {/* SEARCH & FILTERS */}
+            <Card>
+                <CardContent className="p-4 flex flex-col md:flex-row gap-4 justify-between items-center">
+                    <div className="relative w-full md:w-80">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                        <Input
+                            type="text"
+                            placeholder="Search by name, code, or role..."
+                            value={search}
+                            onChange={(e) => setSearch(e.target.value)}
+                            className="pl-9 bg-slate-50 border-slate-200"
+                        />
+                    </div>
 
-                <div className="w-40">
-                    <CustomSelect
-                        value={roleFilter}
-                        onChange={setRoleFilter}
-                        options={[
-                            { label: "All Roles", value: "all" },
-                            { label: "Admin", value: "admin" },
-                            { label: "Employee", value: "employee" },
-                        ]}
-                    />
-                </div>
-            </div>
+                    <div className="w-full md:w-48">
+                        <select
+                            value={roleFilter}
+                            onChange={(e) => setRoleFilter(e.target.value)}
+                            className="flex h-10 w-full rounded-md border border-slate-300 bg-slate-50 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent cursor-pointer"
+                        >
+                            <option value="all">All Roles</option>
+                            <option value="admin">Admin</option>
+                            <option value="employee">Employee</option>
+                        </select>
+                    </div>
+                </CardContent>
+            </Card>
 
             {/* TABLE */}
-            <div className="bg-white rounded-2xl shadow-lg border overflow-x-auto">
-                <table className="min-w-full text-gray-700">
-                    <thead className="bg-[#D9FFF4] text-gray-800 uppercase font-bold text-[13px] border-b">
-                        <tr>
-                            <th className="p-3 text-left">EMP CODE</th>
-                            <th className="p-3 text-left">NAME</th>
-                            <th className="p-3 text-left">ROLE</th>
-                            <th className="p-3 text-left">PHONE</th>
-                        </tr>
-                    </thead>
+            <Card>
+                <div className="overflow-x-auto">
+                    <Table>
+                        <TableHeader>
+                            <TableRow>
+                                <TableHead className="w-[120px]">Emp Code</TableHead>
+                                <TableHead>Employee Name</TableHead>
+                                <TableHead>Role</TableHead>
+                                <TableHead>Contact Info</TableHead>
+                                <TableHead className="text-right sticky right-0 bg-slate-50/90 backdrop-blur z-20 shadow-[-4px_0_10px_-4px_rgba(0,0,0,0.02)] border-l border-slate-100">Actions</TableHead>
+                            </TableRow>
+                        </TableHeader>
 
-                    <tbody>
-                        {filtered.map((emp) => (
-                            <tr
-                                key={emp._id}
-                                onClick={() => navigate(`/employees/ledger/${emp._id}`)}
-                                onContextMenu={(e) => openContextMenu(e, emp)}
-                                className="border-b hover:bg-[#F5FFFC] cursor-pointer h-12"
-                            >
-                                <td className="p-3 font-semibold">{emp.employeeCode}</td>
+                        <TableBody>
+                            {filtered.length === 0 && (
+                                <TableRow>
+                                    <TableCell colSpan="5" className="h-32 text-center text-slate-500">
+                                        No employees found matching your criteria.
+                                    </TableCell>
+                                </TableRow>
+                            )}
 
-                                <td className="p-3 flex items-center gap-2 text-[#00A28E] font-semibold">
-                                    <User2 size={18} /> {emp.name}
-                                </td>
-
-                                <td className="p-3">{emp.role}</td>
-                                <td className="p-3">{emp.phone}</td>
-                            </tr>
-                        ))}
-
-                        {filtered.length === 0 && (
-                            <tr>
-                                <td colSpan="4" className="text-center py-6 text-gray-500 italic">
-                                    No employees found.
-                                </td>
-                            </tr>
-                        )}
-                    </tbody>
-                </table>
-            </div>
+                            {filtered.map((emp) => (
+                                <TableRow
+                                    key={emp._id}
+                                    onClick={() => navigate(`/employees/${emp._id}`)}
+                                    onContextMenu={(e) => openContextMenu(e, emp)}
+                                    className="cursor-pointer group"
+                                >
+                                    <TableCell className="font-medium text-slate-700">
+                                        {emp.employeeCode}
+                                    </TableCell>
+                                    <TableCell>
+                                        <div className="flex items-center gap-3">
+                                            <div className="h-8 w-8 rounded-full bg-primary-100 text-primary-600 flex items-center justify-center font-bold">
+                                                {emp.name.charAt(0).toUpperCase()}
+                                            </div>
+                                            <span className="font-semibold text-slate-900">{emp.name}</span>
+                                        </div>
+                                    </TableCell>
+                                    <TableCell>
+                                        <Badge variant={emp.role === "admin" ? "primary" : "default"}>
+                                            {emp.role.charAt(0).toUpperCase() + emp.role.slice(1)}
+                                        </Badge>
+                                    </TableCell>
+                                    <TableCell className="text-slate-600">
+                                        {emp.phone}
+                                    </TableCell>
+                                    <TableCell className="text-right sticky right-0 bg-white group-hover:bg-slate-50/80 z-10 shadow-[-4px_0_10px_-4px_rgba(0,0,0,0.05)] border-l border-slate-100">
+                                        <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            className="text-slate-400 hover:text-slate-600 opacity-0 group-hover:opacity-100 transition-opacity p-1 h-8"
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                const rect = e.currentTarget.getBoundingClientRect();
+                                                openContextMenu({ preventDefault: () => { }, pageX: rect.left - 120, pageY: rect.bottom + 5 }, emp);
+                                            }}
+                                        >
+                                            <MoreVertical size={16} />
+                                        </Button>
+                                    </TableCell>
+                                </TableRow>
+                            ))}
+                        </TableBody>
+                    </Table>
+                </div>
+            </Card>
 
             {/* RIGHT CLICK CONTEXT MENU */}
             {contextMenu && (
@@ -295,101 +290,123 @@ export default function EmployeeList() {
                         setEditData(contextMenu.emp);
                         setForm(contextMenu.emp);
                         setShowModal(true);
+                        setContextMenu(null);
                     }}
-                    onDelete={() => handleDelete(contextMenu.emp._id)}
+                    onDelete={() => {
+                        handleDelete(contextMenu.emp._id);
+                        setContextMenu(null);
+                    }}
                 />
             )}
 
             {/* ADD / EDIT MODAL */}
             {showModal && (
-                <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-                    <div className="bg-white w-full max-w-md rounded-2xl shadow-xl p-6 relative">
-                        <button
-                            onClick={() => setShowModal(false)}
-                            className="absolute top-3 right-3 text-gray-500 hover:text-gray-700"
-                        >
-                            <X size={22} />
-                        </button>
+                <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+                    <Card className="w-full max-w-md shadow-xl" onClick={(e) => e.stopPropagation()}>
+                        <CardHeader className="flex flex-row items-center justify-between pb-4">
+                            <CardTitle>{editData ? "Edit Employee" : "Add New Employee"}</CardTitle>
+                            <Button variant="ghost" size="sm" onClick={() => setShowModal(false)} className="h-8 w-8 p-0 rounded-full">
+                                <X className="h-4 w-4" />
+                            </Button>
+                        </CardHeader>
 
-                        <h2 className="text-xl font-bold mb-4">
-                            {editData ? "Edit Employee" : "Add Employee"}
-                        </h2>
+                        <CardContent className="space-y-4">
+                            <div>
+                                <Label>Select Role</Label>
+                                <select
+                                    value={form.role}
+                                    onChange={(e) => setForm({ ...form, role: e.target.value })}
+                                    className="flex h-10 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent cursor-pointer"
+                                >
+                                    <option value="" disabled>Select Role...</option>
+                                    <option value="employee">Employee</option>
+                                    <option value="admin">Admin</option>
+                                </select>
+                            </div>
 
-                        <div className="space-y-4 text-sm">
-                            <input
-                                type="text"
-                                placeholder="Employee Name"
-                                value={form.name}
-                                onChange={(e) => setForm({ ...form, name: e.target.value })}
-                                className="w-full border px-3 py-2 rounded-lg"
-                            />
+                            <div>
+                                <Label>Full Name</Label>
+                                <Input
+                                    type="text"
+                                    placeholder="e.g. John Doe"
+                                    value={form.name}
+                                    onChange={(e) => setForm({ ...form, name: e.target.value })}
+                                />
+                            </div>
 
-                            <input
-                                type="text"
-                                placeholder="Phone Number"
-                                value={form.phone}
-                                onChange={(e) => setForm({ ...form, phone: e.target.value })}
-                                className="w-full border px-3 py-2 rounded-lg"
-                            />
+                            <div>
+                                <Label>Phone Number</Label>
+                                <Input
+                                    type="text"
+                                    placeholder="e.g. 9876543210"
+                                    value={form.phone}
+                                    onChange={(e) => setForm({ ...form, phone: e.target.value })}
+                                />
+                            </div>
 
-                            <input
-                                type="email"
-                                placeholder="Email (optional)"
-                                value={form.email}
-                                onChange={(e) => setForm({ ...form, email: e.target.value })}
-                                className="w-full border px-3 py-2 rounded-lg"
-                            />
+                            <div>
+                                <Label>Email Address (optional)</Label>
+                                <Input
+                                    type="email"
+                                    placeholder="e.g. john@example.com"
+                                    value={form.email}
+                                    onChange={(e) => setForm({ ...form, email: e.target.value })}
+                                />
+                            </div>
 
                             {!editData && (
-                                <input
-                                    type="text"
-                                    placeholder="Password"
-                                    value={form.password}
-                                    onChange={(e) => setForm({ ...form, password: e.target.value })}
-                                    className="w-full border px-3 py-2 rounded-lg"
-                                />
+                                <div>
+                                    <Label>Password</Label>
+                                    <Input
+                                        type="text"
+                                        placeholder="Set a default password"
+                                        value={form.password}
+                                        onChange={(e) => setForm({ ...form, password: e.target.value })}
+                                    />
+                                </div>
                             )}
 
-                            <CustomSelect
-                                value={form.role}
-                                onChange={(v) => setForm({ ...form, role: v })}
-                                options={[
-                                    { label: "Employee", value: "employee" },
-                                    { label: "Admin", value: "admin" },
-                                ]}
-                                placeholder="Select Role"
-                            />
-
-                            <button
-                                onClick={handleSave}
-                                className="w-full bg-[#00BFA6] text-white flex items-center justify-center gap-2 py-2 rounded-lg shadow"
-                            >
-                                <Save size={18} />{" "}
-                                {editData ? "Update Employee" : "Create Employee"}
-                            </button>
-                        </div>
-                    </div>
+                            <div className="pt-4 flex justify-end gap-3 border-t border-slate-100 mt-6">
+                                <Button variant="secondary" onClick={() => setShowModal(false)}>
+                                    Cancel
+                                </Button>
+                                <Button onClick={handleSave} icon={Save}>
+                                    {editData ? "Update Employee" : "Create Employee"}
+                                </Button>
+                            </div>
+                        </CardContent>
+                    </Card>
                 </div>
             )}
 
             {/* CREATED POPUP */}
             {showCreatedPopup && (
-                <div className="fixed inset-0 bg-black/30 flex items-center justify-center">
-                    <div className="bg-white p-6 rounded-xl shadow-lg text-sm">
-                        <h3 className="font-bold text-lg mb-2">Employee Created</h3>
+                <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+                    <Card className="w-full max-w-sm shadow-xl animate-in zoom-in duration-200">
+                        <CardHeader>
+                            <CardTitle className="text-emerald-600">Employee Created Successfully</CardTitle>
+                        </CardHeader>
 
-                        <div className="mt-3 p-3 bg-gray-100 rounded-lg">
-                            <p><b>Code:</b> {showCreatedPopup.code}</p>
-                            <p><b>Password:</b> {showCreatedPopup.password}</p>
-                        </div>
+                        <CardContent className="space-y-4">
+                            <div className="p-4 bg-slate-50 border border-slate-200 rounded-lg space-y-2 font-mono text-sm">
+                                <div className="flex justify-between">
+                                    <span className="text-slate-500">Code:</span>
+                                    <span className="font-bold text-slate-900">{showCreatedPopup.code}</span>
+                                </div>
+                                <div className="flex justify-between">
+                                    <span className="text-slate-500">Password:</span>
+                                    <span className="font-bold text-slate-900">{showCreatedPopup.password}</span>
+                                </div>
+                            </div>
+                            <p className="text-xs text-slate-500 text-center">
+                                Please share these credentials securely with the employee.
+                            </p>
 
-                        <button
-                            className="mt-4 bg-[#00BFA6] text-white px-4 py-2 rounded-lg w-full"
-                            onClick={() => setShowCreatedPopup(null)}
-                        >
-                            Close
-                        </button>
-                    </div>
+                            <Button className="w-full" onClick={() => setShowCreatedPopup(null)}>
+                                Done
+                            </Button>
+                        </CardContent>
+                    </Card>
                 </div>
             )}
         </div>

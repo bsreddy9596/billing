@@ -152,5 +152,6 @@ orderSchema.pre("save", function (next) {
 
 orderSchema.index({ status: 1, createdAt: -1 });
 orderSchema.index({ customerPhone: 1 });
+orderSchema.index({ createdBy: 1, isArchived: 1, createdAt: -1 });
 
 module.exports = mongoose.model("Order", orderSchema);

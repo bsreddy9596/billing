@@ -1,19 +1,5 @@
-const User = require("../models/User");
-const jwt = require("jsonwebtoken");
-const bcrypt = require("bcryptjs");
+const authService = require("../services/authService");
 const logger = require("../config/logger");
-
-/* -------------------------------------------------------------------------- */
-/* 🔹 Helper Functions                                                        */
-/* -------------------------------------------------------------------------- */
-
-const generateToken = (user) =>
-  jwt.sign({ id: user._id, role: user.role }, process.env.JWT_SECRET, {
-    expiresIn: "1d",
-  });
-
-const generateEmployeeCode = () =>
-  `EMP${Math.floor(10000 + Math.random() * 90000)}`;
 
 /* -------------------------------------------------------------------------- */
 /* 👑 Auto-create Single Admin                                                */
@@ -23,26 +9,19 @@ const ensureAdminExists = async () => {
     const { ADMIN_PHONE, ADMIN_EMAIL, ADMIN_NAME, ADMIN_PASSWORD } =
       process.env;
 
-    if (!ADMIN_PHONE || !ADMIN_PASSWORD) {
+    const result = await authService.ensureAdminExists(
+      ADMIN_PHONE,
+      ADMIN_EMAIL,
+      ADMIN_NAME,
+      ADMIN_PASSWORD
+    );
+
+    if (result?.missing) {
       logger.warn("⚠️ ADMIN_PHONE or ADMIN_PASSWORD missing in .env");
-      return;
-    }
-
-    let admin = await User.findOne({ phone: ADMIN_PHONE, role: "admin" });
-
-    if (!admin) {
-      const hashed = await bcrypt.hash(ADMIN_PASSWORD, 10);
-      admin = await User.create({
-        name: ADMIN_NAME || "Super Admin",
-        email: ADMIN_EMAIL || "admin@example.com",
-        phone: ADMIN_PHONE,
-        role: "admin",
-        passwordHash: hashed,
-        isApproved: true,
-      });
-      logger.info(`✅ Default Admin created (${ADMIN_PHONE})`);
-    } else {
-      logger.info("👑 Admin already exists");
+    } else if (result?.created) {
+      logger.info(`✅ Default Admin created (${result.adminPhone})`);
+    } else if (result) {
+      logger.info("Admin already exists");
     }
   } catch (err) {
     logger.error(`❌ Admin creation failed: ${err.message}`);
@@ -61,30 +40,21 @@ const adminLogin = async (req, res, next) => {
         .status(400)
         .json({ success: false, message: "Phone & password required" });
 
-    const user = await User.findOne({ phone, role: "admin" });
-    if (!user)
+    const result = await authService.adminLogin(phone, password);
+    if (result.error) {
       return res
-        .status(404)
-        .json({ success: false, message: "Admin not found" });
-
-    const valid = await bcrypt.compare(password, user.passwordHash);
-    if (!valid)
-      return res
-        .status(401)
-        .json({ success: false, message: "Invalid password" });
-
-    const token = generateToken(user);
-    user.lastLoginAt = new Date();
-    await user.save();
+        .status(result.status)
+        .json({ success: false, message: result.error });
+    }
 
     logger.info(`👑 Admin login success (${phone})`);
 
     res.json({
       success: true,
-      token,
-      role: user.role,
-      name: user.name,
-      phone: user.phone,
+      token: result.token,
+      role: result.role,
+      name: result.name,
+      phone: result.phone,
     });
   } catch (err) {
     logger.error(`❌ Admin Login Error: ${err.message}`);
@@ -104,37 +74,19 @@ const addEmployee = async (req, res, next) => {
         .status(400)
         .json({ success: false, message: "All fields required" });
 
-    const existing = await User.findOne({ phone });
-    if (existing)
+    const result = await authService.addEmployee(req.user._id, req.body);
+    if (result.error) {
       return res
-        .status(400)
-        .json({ success: false, message: "Phone already registered" });
-
-    const hash = await bcrypt.hash(password, 10);
-    const employeeCode = generateEmployeeCode();
-
-    const emp = await User.create({
-      name,
-      phone,
-      passwordHash: hash,
-      role: "employee",
-      employeeCode,
-      isApproved: true,
-      adminId: req.user._id,
-    });
+        .status(result.status)
+        .json({ success: false, message: result.error });
+    }
 
     logger.info(`✅ Employee created by admin: ${name} (${phone})`);
 
     res.status(201).json({
       success: true,
       message: "Employee created successfully",
-      data: {
-        id: emp._id,
-        name: emp.name,
-        phone: emp.phone,
-        code: emp.employeeCode,
-        password,
-      },
+      data: result,
     });
   } catch (err) {
     logger.error(`❌ Add Employee Error: ${err.message}`);
@@ -154,30 +106,21 @@ const employeeLogin = async (req, res, next) => {
         .status(400)
         .json({ success: false, message: "Code & password required" });
 
-    const user = await User.findOne({ employeeCode, role: "employee" });
-    if (!user)
+    const result = await authService.employeeLogin(employeeCode, password);
+    if (result.error) {
       return res
-        .status(404)
-        .json({ success: false, message: "Invalid credentials" });
+        .status(result.status)
+        .json({ success: false, message: result.error });
+    }
 
-    const valid = await bcrypt.compare(password, user.passwordHash);
-    if (!valid)
-      return res
-        .status(401)
-        .json({ success: false, message: "Invalid password" });
-
-    const token = generateToken(user);
-    user.lastLoginAt = new Date();
-    await user.save();
-
-    logger.info(`👷 Employee login success: ${user.phone}`);
+    logger.info(`👷 Employee login success: ${result.phone}`);
 
     res.json({
       success: true,
-      token,
-      role: user.role,
-      name: user.name,
-      phone: user.phone,
+      token: result.token,
+      role: result.role,
+      name: result.name,
+      phone: result.phone,
     });
   } catch (err) {
     logger.error(`❌ Employee Login Error: ${err.message}`);
@@ -197,16 +140,14 @@ const resetEmployeePassword = async (req, res, next) => {
         .status(400)
         .json({ success: false, message: "Password too short" });
 
-    const user = await User.findById(req.user.id);
-    if (!user)
+    const result = await authService.resetEmployeePassword(req.user.id, newPassword);
+    if (result.error) {
       return res
-        .status(404)
-        .json({ success: false, message: "User not found" });
+        .status(result.status)
+        .json({ success: false, message: result.error });
+    }
 
-    user.passwordHash = await bcrypt.hash(newPassword, 10);
-    await user.save();
-
-    logger.info(`🔄 Password reset success: ${user.phone}`);
+    logger.info(`🔄 Password reset success: ${result.phone}`);
 
     res.json({ success: true, message: "Password reset successful" });
   } catch (err) {
@@ -220,29 +161,18 @@ const resetEmployeePassword = async (req, res, next) => {
 /* -------------------------------------------------------------------------- */
 const updateEmployee = async (req, res, next) => {
   try {
-    const { name, phone, email, role, status, salary } = req.body;
+    const result = await authService.updateEmployee(req.params.id, req.body);
 
-    const employee = await User.findById(req.params.id);
-
-    if (!employee || employee.role !== "employee")
+    if (result.error) {
       return res
-        .status(404)
-        .json({ success: false, message: "Employee not found" });
-
-    // Update fields
-    employee.name = name ?? employee.name;
-    employee.phone = phone ?? employee.phone;
-    employee.email = email ?? employee.email;
-    employee.role = role ?? employee.role;
-    employee.status = status ?? employee.status;
-    employee.salary = salary ?? employee.salary;
-
-    await employee.save();
+        .status(result.status)
+        .json({ success: false, message: result.error });
+    }
 
     res.status(200).json({
       success: true,
       message: "Employee updated successfully",
-      data: employee,
+      data: result,
     });
   } catch (err) {
     logger.error(`❌ Update Employee Error: ${err.message}`);
@@ -255,16 +185,15 @@ const updateEmployee = async (req, res, next) => {
 /* -------------------------------------------------------------------------- */
 const deleteEmployee = async (req, res, next) => {
   try {
-    const employee = await User.findById(req.params.id);
+    const result = await authService.deleteEmployee(req.params.id);
 
-    if (!employee || employee.role !== "employee")
+    if (result.error) {
       return res
-        .status(404)
-        .json({ success: false, message: "Employee not found" });
+        .status(result.status)
+        .json({ success: false, message: result.error });
+    }
 
-    await User.findByIdAndDelete(req.params.id);
-
-    logger.info(`🗑️ Deleted Employee: ${employee.phone}`);
+    logger.info(`🗑️ Deleted Employee: ${result.phone}`);
 
     res.json({ success: true, message: "Employee deleted successfully" });
   } catch (err) {
@@ -278,9 +207,7 @@ const deleteEmployee = async (req, res, next) => {
 /* -------------------------------------------------------------------------- */
 const getEmployees = async (req, res, next) => {
   try {
-    const employees = await User.find({ role: "employee" })
-      .select("-passwordHash -__v")
-      .sort({ createdAt: -1 });
+    const employees = await authService.getEmployees();
 
     res.json({
       success: true,

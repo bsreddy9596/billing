@@ -4,7 +4,11 @@ import toast, { Toaster } from "react-hot-toast";
 import { useNavigate, useSearchParams } from "react-router-dom";
 
 import api from "../api/api";
-import { Plus, Trash, Image as ImageIcon, Save } from "lucide-react";
+import { Plus, Trash, Image as ImageIcon, Save, ArrowLeft, Ruler, StickyNote } from "lucide-react";
+import Button from "../components/ui/Button";
+import { Input, Label } from "../components/ui/Input";
+import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "../components/ui/Card";
+
 
 /* ------------------------------------------------------ */
 /* DEFAULT DRAWING OBJECT                                 */
@@ -19,49 +23,6 @@ const newDrawing = () => ({
 });
 
 /* ------------------------------------------------------ */
-/* INPUT COMPONENT                                        */
-/* ------------------------------------------------------ */
-function Input({ label, value, onChange, type = "text" }) {
-    return (
-        <div className="w-full">
-            <label className="block text-sm font-medium text-gray-700">
-                {label}
-            </label>
-            <input
-                type={type}
-                value={value}
-                onChange={(e) => onChange(e.target.value)}
-                className="mt-1 w-full border rounded-lg px-3 py-2"
-            />
-        </div>
-    );
-}
-
-/* ------------------------------------------------------ */
-/* SELECT COMPONENT                                       */
-/* ------------------------------------------------------ */
-function Select({ label, value, options, onChange }) {
-    return (
-        <div className="w-full">
-            <label className="block text-sm font-medium text-gray-700">
-                {label}
-            </label>
-            <select
-                value={value}
-                onChange={(e) => onChange(e.target.value)}
-                className="mt-1 w-full border rounded-lg px-3 py-2"
-            >
-                {options.map((o) => (
-                    <option key={o} value={o}>
-                        {o}
-                    </option>
-                ))}
-            </select>
-        </div>
-    );
-}
-
-/* ------------------------------------------------------ */
 /* MAIN ADMIN COMPONENT                                   */
 /* ------------------------------------------------------ */
 export default function CreateOrder() {
@@ -73,6 +34,7 @@ export default function CreateOrder() {
     const [customerName, setCustomerName] = useState("");
     const [customerPhone, setCustomerPhone] = useState("");
     const [customerAddress, setCustomerAddress] = useState("");
+    const [expectedDelivery, setExpectedDelivery] = useState("");
     const [drawings, setDrawings] = useState([newDrawing()]);
     const [saving, setSaving] = useState(false);
 
@@ -90,6 +52,9 @@ export default function CreateOrder() {
                 setCustomerName(o.customerName || "");
                 setCustomerPhone(o.customerPhone || "");
                 setCustomerAddress(o.customerAddress || "");
+                if (o.expectedDelivery) {
+                    setExpectedDelivery(new Date(o.expectedDelivery).toISOString().split('T')[0]);
+                }
 
                 if (o.drawings?.length) {
                     setDrawings(
@@ -170,6 +135,7 @@ export default function CreateOrder() {
             customerName,
             customerPhone,
             customerAddress,
+            expectedDelivery: expectedDelivery ? new Date(expectedDelivery) : undefined,
             drawings: drawings.map((d) => ({
                 itemType: d.itemType,
                 name: d.name,
@@ -202,126 +168,186 @@ export default function CreateOrder() {
     /* UI                                                     */
     /* ------------------------------------------------------ */
     return (
-        <div className="p-4 md:p-6">
+        <div className="p-4 md:p-6 max-w-5xl mx-auto">
             <Toaster />
 
-            <h1 className="text-2xl font-bold mb-6">
-                {editId ? "Edit Order (Admin)" : "Create Order (Admin)"}
-            </h1>
-
-            <div className="bg-white p-5 rounded-xl border shadow-md space-y-6">
-                {/* CUSTOMER DETAILS */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                    <Input
-                        label="Customer Name"
-                        value={customerName}
-                        onChange={setCustomerName}
-                    />
-                    <Input
-                        label="Phone Number"
-                        value={customerPhone}
-                        onChange={setCustomerPhone}
-                    />
-                    <Input
-                        label="Address"
-                        value={customerAddress}
-                        onChange={setCustomerAddress}
-                    />
+            <div className="flex items-center gap-4 mb-6 animate-fade-in-up">
+                <Button variant="ghost" className="hidden sm:flex" onClick={() => navigate(-1)}>
+                    <ArrowLeft size={18} className="mr-2" /> Back
+                </Button>
+                <div>
+                    <h1 className="text-2xl font-bold text-slate-800">
+                        {editId ? "Edit Order" : "Create New Order"}
+                    </h1>
+                    <p className="text-sm text-slate-500 mt-1">
+                        {editId ? `Update details for this customer order.` : `Fill out the details to create a new production order.`}
+                    </p>
                 </div>
+            </div>
 
-                {/* DRAWINGS */}
-                {drawings.map((d, idx) => (
-                    <div key={idx} className="bg-gray-50 p-4 rounded-xl border">
-                        <div className="flex justify-between items-center">
-                            <h2 className="font-semibold">Sketch #{idx + 1}</h2>
-
-                            {drawings.length > 1 && (
-                                <button
-                                    onClick={() => removeDrawing(idx)}
-                                    className="text-red-600 flex items-center gap-1"
-                                >
-                                    <Trash size={16} /> Remove
-                                </button>
-                            )}
-                        </div>
-
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-3">
-                            <Select
-                                label="Item Type"
-                                value={d.itemType}
-                                options={[
-                                    "SOFA",
-                                    "L-SHAPE",
-                                    "BED",
-                                    "CHAIR",
-                                    "TABLE",
-                                    "CUSTOM",
-                                ]}
-                                onChange={(v) => updateDrawing(idx, "itemType", v)}
-                            />
+            <Card className="shadow-lg border-0 bg-white/50 backdrop-blur-sm animate-fade-in-up" style={{ animationDelay: "100ms" }}>
+                <CardHeader className="bg-white border-b border-slate-100 rounded-t-xl pb-4">
+                    <CardTitle className="text-lg text-slate-800">Customer Details</CardTitle>
+                </CardHeader>
+                <CardContent className="p-6 bg-white">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        <div className="space-y-1.5">
+                            <Label>Customer Name <span className="text-rose-500">*</span></Label>
                             <Input
-                                label="Model / Name"
-                                value={d.name}
-                                onChange={(v) => updateDrawing(idx, "name", v)}
-                            />
-                            <Input
-                                label="Notes"
-                                value={d.notes}
-                                onChange={(v) => updateDrawing(idx, "notes", v)}
+                                placeholder="E.g. John Doe"
+                                value={customerName}
+                                onChange={(e) => setCustomerName(e.target.value)}
                             />
                         </div>
-
-                        {/* IMAGE UPLOAD */}
-                        <div className="flex flex-wrap gap-3 mt-4 items-center">
-                            <label className="cursor-pointer flex items-center gap-2 px-4 py-2 rounded bg-teal-50 text-teal-700">
-                                <ImageIcon size={16} /> Upload Image
-                                <input
-                                    type="file"
-                                    accept="image/*"
-                                    className="hidden"
-                                    onChange={(e) => {
-                                        const file = e.target.files?.[0];
-                                        if (!file) return;
-                                        uploadImage(idx, file);
-                                        e.target.value = ""; // ⭐ IMPORTANT RESET
-                                    }}
-                                />
-                            </label>
-
-                            {d.drawingUrl && (
-                                <img
-                                    src={d.drawingUrl}
-                                    alt={`sketch-${idx}`}
-                                    className="border w-24 h-20 rounded object-cover"
-                                />
-                            )}
+                        <div className="space-y-1.5">
+                            <Label>Phone Number</Label>
+                            <Input
+                                placeholder="+91 9876543210"
+                                value={customerPhone}
+                                onChange={(e) => setCustomerPhone(e.target.value)}
+                            />
+                        </div>
+                        <div className="space-y-1.5">
+                            <Label>Delivery Address</Label>
+                            <Input
+                                placeholder="Full Address..."
+                                value={customerAddress}
+                                onChange={(e) => setCustomerAddress(e.target.value)}
+                            />
+                        </div>
+                        <div className="space-y-1.5">
+                            <Label>Delivery Date</Label>
+                            <Input
+                                type="date"
+                                value={expectedDelivery}
+                                onChange={(e) => setExpectedDelivery(e.target.value)}
+                            />
                         </div>
                     </div>
-                ))}
+                </CardContent>
+            </Card>
 
-                {/* ADD SKETCH */}
-                <button
-                    onClick={addDrawing}
-                    className="flex items-center gap-2 px-4 py-2 rounded bg-teal-50 text-teal-700"
-                >
+            <div className="mt-8 mb-4 flex items-center justify-between animate-fade-in-up" style={{ animationDelay: "200ms" }}>
+                <h2 className="text-lg font-bold text-slate-800 flex items-center gap-2">
+                    <Ruler size={20} className="text-primary" /> Drawings & Sketches
+                </h2>
+                <Button variant="outline" size="sm" onClick={addDrawing} className="gap-2">
                     <Plus size={16} /> Add Sketch
-                </button>
+                </Button>
+            </div>
 
-                {/* SAVE */}
-                <div className="flex justify-end mt-4">
-                    <button
-                        onClick={saveOrder}
-                        disabled={saving}
-                        className="flex items-center gap-2 px-6 py-3 rounded bg-green-600 text-white disabled:opacity-60"
-                    >
-                        <Save size={18} />
-                        {saving
-                            ? "Saving..."
-                            : editId
-                                ? "Update Order"
-                                : "Save Order"}
-                    </button>
-                </div>
+            <div className="space-y-6">
+                {drawings.map((d, idx) => (
+                    <Card key={idx} className="overflow-hidden border-slate-200 animate-fade-in-up" style={{ animationDelay: `${250 + idx * 50}ms` }}>
+                        <CardHeader className="bg-slate-50 border-b border-slate-100 py-3 flex flex-row items-center justify-between">
+                            <CardTitle className="text-base font-semibold text-slate-700">Sketch #{idx + 1}</CardTitle>
+                            {drawings.length > 1 && (
+                                <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => removeDrawing(idx)}
+                                    className="text-rose-500 hover:text-rose-600 hover:bg-rose-50 h-8"
+                                >
+                                    <Trash size={14} className="mr-1" /> Remove
+                                </Button>
+                            )}
+                        </CardHeader>
+                        <CardContent className="p-6">
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                <div className="space-y-1.5">
+                                    <Label>Item Category</Label>
+                                    <select
+                                        value={d.itemType}
+                                        onChange={(e) => updateDrawing(idx, "itemType", e.target.value)}
+                                        className="flex h-10 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-colors"
+                                    >
+                                        {["SOFA", "L-SHAPE", "BED", "CHAIR", "TABLE", "CUSTOM"].map((o) => (
+                                            <option key={o} value={o}>{o}</option>
+                                        ))}
+                                    </select>
+                                </div>
+                                <div className="space-y-1.5">
+                                    <Label>Model / Name <span className="text-rose-500">*</span></Label>
+                                    <Input
+                                        placeholder="e.g. Modern L-Shape Sofa"
+                                        value={d.name}
+                                        onChange={(e) => updateDrawing(idx, "name", e.target.value)}
+                                    />
+                                </div>
+                                <div className="space-y-1.5">
+                                    <Label>Notes & Specifications</Label>
+                                    <div className="relative">
+                                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                            <StickyNote size={14} className="text-slate-400" />
+                                        </div>
+                                        <Input
+                                            className="pl-9"
+                                            placeholder="Specific details..."
+                                            value={d.notes}
+                                            onChange={(e) => updateDrawing(idx, "notes", e.target.value)}
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* IMAGE UPLOAD */}
+                            <div className="mt-6 p-4 rounded-xl border border-dashed border-slate-300 bg-slate-50 flex flex-col sm:flex-row items-start sm:items-center gap-6">
+                                <div className="flex-1">
+                                    <h4 className="text-sm font-semibold text-slate-800 mb-1">Design Image</h4>
+                                    <p className="text-xs text-slate-500 mb-3">Upload a reference image or 2D/3D drawing for this item.</p>
+                                    <label className="cursor-pointer inline-flex items-center gap-2 px-4 py-2 border border-primary text-primary hover:bg-primary/5 rounded-md font-medium text-sm transition-colors">
+                                        <ImageIcon size={16} /> {d.drawingUrl ? "Change Image" : "Upload Image"}
+                                        <input
+                                            type="file"
+                                            accept="image/*"
+                                            className="hidden"
+                                            onChange={(e) => {
+                                                const file = e.target.files?.[0];
+                                                if (!file) return;
+                                                uploadImage(idx, file);
+                                                e.target.value = ""; // ⭐ IMPORTANT RESET
+                                            }}
+                                        />
+                                    </label>
+                                </div>
+
+                                {d.drawingUrl ? (
+                                    <div className="relative h-28 w-40 rounded-lg overflow-hidden border border-slate-200 bg-white shadow-sm flex-shrink-0 group">
+                                        <img
+                                            src={d.drawingUrl}
+                                            alt={`sketch-${idx}`}
+                                            className="w-full h-full object-contain"
+                                        />
+                                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                            <span className="text-white text-xs font-medium">Uploaded</span>
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <div className="h-28 w-40 rounded-lg border border-slate-200 border-dashed bg-slate-100 flex flex-col items-center justify-center text-slate-400 flex-shrink-0">
+                                        <ImageIcon size={24} className="mb-2 opacity-50" />
+                                        <span className="text-xs font-medium">No Image</span>
+                                    </div>
+                                )}
+                            </div>
+                        </CardContent>
+                    </Card>
+                ))}
+            </div>
+
+            {/* SAVE ACTION */}
+            <div className="mt-8 flex justify-end gap-3 animate-fade-in-up" style={{ animationDelay: "400ms" }}>
+                <Button variant="outline" onClick={() => navigate(-1)} disabled={saving}>
+                    Cancel
+                </Button>
+                <Button
+                    variant="primary"
+                    onClick={saveOrder}
+                    disabled={saving}
+                    className="px-8"
+                >
+                    <Save size={18} className="mr-2" />
+                    {saving ? "Saving..." : editId ? "Update Order" : "Publish Order"}
+                </Button>
             </div>
         </div>
     );

@@ -5,6 +5,7 @@ const { protect, checkRole } = require("../middlewares/authMiddleware");
 
 const {
   getMonthlyStats,
+  getOrdersChartData,
   getMaterialUsage,
   getSummary,
   getOrderWiseProfit,
@@ -12,9 +13,12 @@ const {
   getMaterialStockAgeing,
   getDeadStockProducts,
   getProductWiseProfit,
+  getUpcomingDeliveries,
 } = require("../controllers/analyticsController");
 
 router.get("/summary", protect, getSummary);
+router.get("/orders-chart", protect, getOrdersChartData);
+router.get("/upcoming-deliveries", protect, getUpcomingDeliveries);
 
 router.get("/monthly", protect, getMonthlyStats);
 

@@ -5,6 +5,12 @@ import { Package, PlusCircle, Pencil, Trash, X } from "lucide-react";
 import socket from "../socket";
 import toast from "react-hot-toast";
 
+import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/Card";
+import Button from "../components/ui/Button";
+import { Input, Label } from "../components/ui/Input";
+import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "../components/ui/Table";
+import Badge from "../components/ui/Badge";
+
 export default function Materials() {
     const [materials, setMaterials] = useState([]);
     const [totalValue, setTotalValue] = useState(0);
@@ -155,184 +161,188 @@ export default function Materials() {
     };
 
     return (
-        <div className="p-6 space-y-6 bg-gradient-to-br from-white via-[#F0FFFB] to-[#E6FFF8] min-h-screen">
+        <div className="space-y-6">
             {/* Header */}
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                <div className="flex items-center gap-3">
-                    <Package className="text-[#00BFA6]" />
-                    <div>
-                        <h1 className="text-2xl font-extrabold text-gray-900">Raw Materials</h1>
-                        <p className="text-sm text-gray-500">Manage raw materials & stock</p>
-                    </div>
+                <div>
+                    <h1 className="text-2xl font-bold tracking-tight text-slate-900 flex items-center gap-2">
+                        <Package className="text-primary-600" /> Raw Materials
+                    </h1>
+                    <p className="text-sm text-slate-500 mt-1">Manage raw materials & stock inventory</p>
                 </div>
 
-                <div className="w-full sm:w-auto flex gap-2">
-                    <button
-                        onClick={handleAdd}
-                        className="flex items-center gap-2 bg-gradient-to-r from-[#00BFA6] to-[#00A28E] text-white px-4 py-2 rounded-lg shadow hover:opacity-95 transition"
-                    >
-                        <PlusCircle size={18} /> Add Material
-                    </button>
-                </div>
+                <Button onClick={handleAdd} icon={PlusCircle}>
+                    Add Material
+                </Button>
             </div>
 
             {/* Total Stock Value */}
-            <div className="bg-white p-5 rounded-2xl shadow-md border border-gray-100">
-                <h2 className="text-lg font-semibold text-gray-700">Total Stock Value</h2>
-                <p className="text-3xl font-bold text-[#00BFA6] mt-1">₹{Number(totalValue || 0).toLocaleString()}</p>
-            </div>
+            <Card className="bg-gradient-to-br from-primary-50 to-white border-primary-100">
+                <CardContent className="p-6">
+                    <h2 className="text-sm font-semibold text-primary-900/70 uppercase tracking-wider">Total Stock Value</h2>
+                    <p className="text-3xl font-bold text-primary-700 mt-2">₹{Number(totalValue || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+                </CardContent>
+            </Card>
 
             {/* Table */}
-            <div className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-x-auto">
-                <table className="min-w-full text-sm text-gray-700">
-                    <thead className="bg-[#E0FFF5] text-gray-700 text-xs uppercase font-semibold border-b">
-                        <tr>
-                            <th className="p-3 text-left">Material</th>
-                            <th className="p-3 text-left">Available Qty</th>
-                            <th className="p-3 text-left">Quality</th>
-                            <th className="p-3 text-left">Cost / Unit (₹)</th>
-                            <th className="p-3 text-left">Total Value (₹)</th>
-                            <th className="p-3 text-center">Actions</th>
-                        </tr>
-                    </thead>
+            <Card>
+                <div className="overflow-x-auto">
+                    <Table>
+                        <TableHeader>
+                            <TableRow>
+                                <TableHead>Material Name</TableHead>
+                                <TableHead>Available Qty</TableHead>
+                                <TableHead>Quality</TableHead>
+                                <TableHead className="text-right">Cost / Unit</TableHead>
+                                <TableHead className="text-right">Total Value</TableHead>
+                                <TableHead className="text-right sticky right-0 bg-slate-50/90 backdrop-blur z-20 shadow-[-4px_0_10px_-4px_rgba(0,0,0,0.02)] border-l border-slate-100">Actions</TableHead>
+                            </TableRow>
+                        </TableHeader>
 
-                    <tbody>
-                        {loading ? (
-                            <tr>
-                                <td colSpan="6" className="p-6 text-center text-gray-500">
-                                    Loading materials...
-                                </td>
-                            </tr>
-                        ) : materials.length > 0 ? (
-                            materials.map((mat) => (
-                                <tr key={mat._id} className="border-b hover:bg-[#F0FFFB] transition">
-                                    <td className="p-3 font-medium">{mat.name}</td>
-                                    <td className="p-3">
-                                        {mat.availableQty ?? 0} {mat.unit}
-                                    </td>
-                                    <td className="p-3">{mat.quality || "—"}</td>
-                                    <td className="p-3">{Number(mat.costPerUnit || 0).toFixed(2)}</td>
-                                    <td className="p-3 font-semibold text-[#00BFA6]">
-                                        ₹{((Number(mat.costPerUnit) || 0) * (Number(mat.availableQty) || 0)).toLocaleString()}
-                                    </td>
-                                    <td className="p-3">
-                                        <div className="flex justify-center gap-3">
-                                            <button onClick={() => handleEdit(mat)} className="text-[#00BFA6] hover:text-[#008F7A]">
-                                                <Pencil size={16} />
-                                            </button>
+                        <TableBody>
+                            {loading ? (
+                                <TableRow>
+                                    <TableCell colSpan="6" className="h-24 text-center text-slate-500">
+                                        Loading materials...
+                                    </TableCell>
+                                </TableRow>
+                            ) : materials.length > 0 ? (
+                                materials.map((mat) => (
+                                    <TableRow key={mat._id} className="group">
+                                        <TableCell className="font-medium text-slate-900">{mat.name}</TableCell>
+                                        <TableCell>
+                                            <span className="font-semibold text-slate-700">{mat.availableQty ?? 0}</span>
+                                            <span className="text-slate-500 ml-1 text-xs uppercase">{mat.unit}</span>
+                                        </TableCell>
+                                        <TableCell>
+                                            {mat.quality ? (
+                                                <Badge variant="default" className="bg-slate-100 text-slate-700 border-slate-200">
+                                                    {mat.quality}
+                                                </Badge>
+                                            ) : (
+                                                <span className="text-slate-400">—</span>
+                                            )}
+                                        </TableCell>
+                                        <TableCell className="text-right text-slate-600">
+                                            ₹{Number(mat.costPerUnit || 0).toFixed(2)}
+                                        </TableCell>
+                                        <TableCell className="text-right font-semibold text-primary-600">
+                                            ₹{((Number(mat.costPerUnit) || 0) * (Number(mat.availableQty) || 0)).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                        </TableCell>
+                                        <TableCell className="text-right sticky right-0 bg-white group-hover:bg-slate-50/80 z-10 shadow-[-4px_0_10px_-4px_rgba(0,0,0,0.05)] border-l border-slate-100">
+                                            <div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                <Button variant="ghost" size="sm" onClick={() => handleEdit(mat)} className="h-8 w-8 p-0 text-slate-400 hover:text-primary-600">
+                                                    <Pencil size={16} />
+                                                </Button>
 
-                                            <button onClick={() => handleDelete(mat._id)} className="text-red-500 hover:text-red-700">
-                                                <Trash size={16} />
-                                            </button>
-                                        </div>
-                                    </td>
-                                </tr>
-                            ))
-                        ) : (
-                            <tr>
-                                <td colSpan="6" className="text-center py-6 text-gray-500 italic">
-                                    No materials found.
-                                </td>
-                            </tr>
-                        )}
-                    </tbody>
-                </table>
-            </div>
+                                                <Button variant="ghost" size="sm" onClick={() => handleDelete(mat._id)} className="h-8 w-8 p-0 text-slate-400 hover:text-rose-600">
+                                                    <Trash size={16} />
+                                                </Button>
+                                            </div>
+                                        </TableCell>
+                                    </TableRow>
+                                ))
+                            ) : (
+                                <TableRow>
+                                    <TableCell colSpan="6" className="h-32 text-center text-slate-500">
+                                        No materials found. Start by adding one.
+                                    </TableCell>
+                                </TableRow>
+                            )}
+                        </TableBody>
+                    </Table>
+                </div>
+            </Card>
 
             {/* Modal */}
             {showModal && (
-                <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex justify-center items-center z-50 p-4">
-                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6 relative">
-                        <button
-                            onClick={() => setShowModal(false)}
-                            className="absolute top-4 right-4 text-gray-500 hover:text-[#00BFA6]"
-                            aria-label="Close"
-                        >
-                            <X size={20} />
-                        </button>
+                <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm flex justify-center items-center z-50 p-4">
+                    <Card className="w-full max-w-md shadow-xl animate-in zoom-in duration-200">
+                        <CardHeader className="flex flex-row items-center justify-between pb-4">
+                            <CardTitle>{editData ? "Edit Material" : "Add New Material"}</CardTitle>
+                            <Button variant="ghost" size="sm" onClick={() => setShowModal(false)} className="h-8 w-8 p-0 rounded-full">
+                                <X className="h-4 w-4" />
+                            </Button>
+                        </CardHeader>
 
-                        <h2 className="text-2xl font-semibold text-gray-800 mb-5 text-center">
-                            {editData ? "Edit Material" : "Add New Material"}
-                        </h2>
-
-                        <form
-                            onSubmit={handleSave}
-                            className="space-y-4"
-                            onKeyDown={(e) => {
-                                // Enter key should submit/save inside modal
-                                if (e.key === "Enter") {
-                                    e.preventDefault();
-                                    handleSave(e);
-                                }
-                            }}
-                        >
-                            <div>
-                                <label className="text-sm block mb-1">Material Name</label>
-                                <input
-                                    value={form.name}
-                                    onChange={(e) => setForm({ ...form, name: e.target.value })}
-                                    required
-                                    className="w-full border rounded-md px-3 py-2"
-                                />
-                            </div>
-
-                            <div>
-                                <label className="text-sm block mb-1">Unit</label>
-                                <input
-                                    value={form.unit}
-                                    onChange={(e) => setForm({ ...form, unit: e.target.value })}
-                                    required
-                                    className="w-full border rounded-md px-3 py-2"
-                                />
-                            </div>
-
-                            <div className="grid grid-cols-2 gap-3">
+                        <CardContent>
+                            <form
+                                onSubmit={handleSave}
+                                className="space-y-4"
+                                onKeyDown={(e) => {
+                                    if (e.key === "Enter") {
+                                        e.preventDefault();
+                                        handleSave(e);
+                                    }
+                                }}
+                            >
                                 <div>
-                                    <label className="text-sm block mb-1">Cost Per Unit</label>
-                                    <input
-                                        type="number"
-                                        min="0"
-                                        step="0.01"
-                                        value={form.costPerUnit}
-                                        onChange={(e) => setForm({ ...form, costPerUnit: e.target.value })}
+                                    <Label>Material Name</Label>
+                                    <Input
+                                        value={form.name}
+                                        onChange={(e) => setForm({ ...form, name: e.target.value })}
                                         required
-                                        className="w-full border rounded-md px-3 py-2"
+                                        placeholder="e.g. Teak Wood"
                                     />
                                 </div>
 
                                 <div>
-                                    <label className="text-sm block mb-1">Available Qty</label>
-                                    <input
-                                        type="number"
-                                        min="0"
-                                        value={form.availableQty}
-                                        onChange={(e) => setForm({ ...form, availableQty: e.target.value })}
-                                        className="w-full border rounded-md px-3 py-2"
+                                    <Label>Unit of Measurement</Label>
+                                    <Input
+                                        value={form.unit}
+                                        onChange={(e) => setForm({ ...form, unit: e.target.value })}
+                                        required
+                                        placeholder="e.g. sq ft, kg, piece"
                                     />
                                 </div>
-                            </div>
 
-                            <div>
-                                <label className="text-sm block mb-1">Quality</label>
-                                <input
-                                    value={form.quality}
-                                    onChange={(e) => setForm({ ...form, quality: e.target.value })}
-                                    placeholder="A / B / Premium"
-                                    className="w-full border rounded-md px-3 py-2"
-                                />
-                            </div>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <Label>Cost Per Unit (₹)</Label>
+                                        <Input
+                                            type="number"
+                                            min="0"
+                                            step="0.01"
+                                            value={form.costPerUnit}
+                                            onChange={(e) => setForm({ ...form, costPerUnit: e.target.value })}
+                                            required
+                                            placeholder="0.00"
+                                        />
+                                    </div>
 
-                            <div className="flex justify-end gap-2 pt-4">
-                                <button type="button" onClick={() => setShowModal(false)} className="px-4 py-2 bg-gray-200 rounded-md">
-                                    Cancel
-                                </button>
+                                    <div>
+                                        <Label>Available Qty</Label>
+                                        <Input
+                                            type="number"
+                                            min="0"
+                                            value={form.availableQty}
+                                            onChange={(e) => setForm({ ...form, availableQty: e.target.value })}
+                                            placeholder="0"
+                                        />
+                                    </div>
+                                </div>
 
-                                <button type="submit" disabled={saving} className="px-5 py-2 bg-[#00BFA6] text-white rounded-md">
-                                    {saving ? (editData ? "Updating..." : "Saving...") : editData ? "Update" : "Save"}
-                                </button>
-                            </div>
-                        </form>
-                    </div>
+                                <div>
+                                    <Label>Quality / Grade (Optional)</Label>
+                                    <Input
+                                        value={form.quality}
+                                        onChange={(e) => setForm({ ...form, quality: e.target.value })}
+                                        placeholder="e.g. Premium / Grade A"
+                                    />
+                                </div>
+
+                                <div className="flex justify-end gap-3 pt-4 border-t border-slate-100 mt-6">
+                                    <Button type="button" variant="secondary" onClick={() => setShowModal(false)}>
+                                        Cancel
+                                    </Button>
+
+                                    <Button type="submit" disabled={saving}>
+                                        {saving ? (editData ? "Updating..." : "Saving...") : editData ? "Update Material" : "Save Material"}
+                                    </Button>
+                                </div>
+                            </form>
+                        </CardContent>
+                    </Card>
                 </div>
             )}
         </div>

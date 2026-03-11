@@ -1,8 +1,13 @@
 // src/pages/EmployeeLedger.jsx
 import { useEffect, useState } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import api from "../api/api";
-import { User2, CalendarDays, Pencil, Trash2 } from "lucide-react";
+import { User2, CalendarDays, Pencil, Trash2, ArrowLeft, PlusCircle, X } from "lucide-react";
+import { Card, CardContent } from "../components/ui/Card";
+import Button from "../components/ui/Button";
+import { Input, Label } from "../components/ui/Input";
+import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "../components/ui/Table";
+import Badge from "../components/ui/Badge";
 
 /* -------------------------------------------------------------------------- */
 /* ⭐ CUSTOM SELECT DROPDOWN (Fixes Blue Hover Issue)                          */
@@ -18,13 +23,13 @@ function CustomSelect({ value, onChange }) {
         <div className="relative">
             <div
                 onClick={() => setOpen(!open)}
-                className="w-full border px-3 py-2 rounded-lg cursor-pointer bg-white"
+                className="w-full flex h-10 items-center border border-slate-300 px-3 py-2 rounded-lg cursor-pointer bg-white text-sm focus:ring-2 focus:ring-primary-500 focus:outline-none"
             >
-                {value === "credit" ? "Credit" : "Debit"}
+                {value === "credit" ? "Credit (+)" : "Debit (-)"}
             </div>
 
             {open && (
-                <div className="absolute w-full bg-white border rounded-lg mt-1 shadow-lg z-50">
+                <div className="absolute w-full bg-white border border-slate-200 rounded-lg mt-1 shadow-lg z-50 overflow-hidden">
                     {options.map((opt) => (
                         <div
                             key={opt.value}
@@ -32,7 +37,7 @@ function CustomSelect({ value, onChange }) {
                                 onChange(opt.value);
                                 setOpen(false);
                             }}
-                            className="px-3 py-2 cursor-pointer hover:bg-[#00A28E] hover:text-white transition"
+                            className="px-3 py-2 text-sm cursor-pointer hover:bg-primary-50 hover:text-primary-700 transition"
                         >
                             {opt.label}
                         </div>
@@ -49,6 +54,7 @@ function CustomSelect({ value, onChange }) {
 
 export default function EmployeeLedger() {
     const { id } = useParams();
+    const navigate = useNavigate();
 
     const [transactions, setTransactions] = useState([]);
     const [employee, setEmployee] = useState({});
@@ -163,202 +169,251 @@ export default function EmployeeLedger() {
     /* -------------------------------------------------------------------------- */
 
     return (
-        <div className="p-6 space-y-6 bg-gradient-to-br from-white via-[#F0FFFB] to-[#E6FFF8] min-h-screen">
+        <div className="space-y-6">
 
-            {/* Employee Card */}
-            <div className="bg-gradient-to-r from-[#00BFA6] to-[#00A28E] text-white rounded-2xl p-6 shadow-lg flex justify-between items-center">
+            {/* HEADER */}
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <div className="flex items-center gap-3">
-                    <div className="bg-white/20 p-3 rounded-full">
-                        <User2 size={30} />
-                    </div>
+                    <Button variant="secondary" size="sm" onClick={() => navigate(-1)} icon={ArrowLeft} className="px-2" />
                     <div>
-                        <h1 className="text-2xl font-bold">{employee.name}</h1>
-                        <p className="text-sm opacity-90">Code: {employee.employeeCode}</p>
-                        <p className="text-sm opacity-90">Phone: {employee.phone}</p>
+                        <h1 className="text-2xl font-bold tracking-tight text-slate-900">
+                            Employee Ledger
+                        </h1>
+                        <p className="text-sm text-slate-500 mt-1">Manage advances and deductions</p>
                     </div>
                 </div>
 
-                <div className="text-right">
-                    <p className="text-sm opacity-80">Current Balance</p>
-                    <p className="text-3xl font-extrabold text-yellow-200">₹{balance}</p>
+                <div className="flex items-center gap-3 w-full sm:w-auto">
+                    <div className="bg-white border rounded-lg px-3 py-2 flex items-center gap-2 shadow-sm w-full sm:w-auto">
+                        <CalendarDays size={16} className="text-slate-400" />
+                        <input
+                            type="month"
+                            value={selectedMonth}
+                            onChange={(e) => setSelectedMonth(e.target.value)}
+                            className="text-sm border-none focus:ring-0 p-0 text-slate-700 bg-transparent w-full"
+                        />
+                        {selectedMonth && (
+                            <button onClick={() => setSelectedMonth("")} className="text-xs text-primary-600 hover:text-primary-800 ml-2 font-medium">
+                                Clear
+                            </button>
+                        )}
+                    </div>
 
-                    <button
-                        onClick={() => setShowModal(true)}
-                        className="mt-3 bg-white text-[#00A28E] px-4 py-2 rounded-xl shadow font-semibold hover:bg-gray-100 transition"
-                    >
-                        + Add Entry
-                    </button>
+                    <Button onClick={() => setShowModal(true)} icon={PlusCircle} className="whitespace-nowrap hidden sm:flex">
+                        Add Entry
+                    </Button>
                 </div>
             </div>
 
-            {/* Filter */}
-            <div className="flex items-center gap-3 bg-white p-4 rounded-xl shadow border">
-                <CalendarDays size={20} className="text-[#00BFA6]" />
-                <label>Filter by Month:</label>
-                <input
-                    type="month"
-                    value={selectedMonth}
-                    onChange={(e) => setSelectedMonth(e.target.value)}
-                    className="border px-3 py-1 rounded-lg"
-                />
-                {selectedMonth && (
-                    <button onClick={() => setSelectedMonth("")} className="text-[#00BFA6] underline text-sm">
-                        Clear
-                    </button>
-                )}
+            {/* Employee Card & Balances */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                {/* Employee Info Card */}
+                <Card className="lg:col-span-2 bg-gradient-to-r from-primary-600 to-primary-700 text-white border-primary-800">
+                    <CardContent className="p-6">
+                        <div className="flex justify-between items-start sm:items-center flex-col sm:flex-row gap-6">
+                            <div className="flex items-center gap-4">
+                                <div className="bg-white/20 p-4 rounded-xl flex-shrink-0">
+                                    <User2 size={32} className="text-white" />
+                                </div>
+                                <div>
+                                    <h2 className="text-2xl font-bold text-white">{employee.name}</h2>
+                                    <div className="flex items-center gap-4 mt-2 text-primary-100 text-sm">
+                                        <span>Code: <span className="text-white font-medium">{employee.employeeCode}</span></span>
+                                        <span>•</span>
+                                        <span>Phone: <span className="text-white font-medium">{employee.phone || "N/A"}</span></span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="text-left sm:text-right bg-black/10 p-4 rounded-xl w-full sm:w-auto">
+                                <p className="text-xs font-semibold uppercase tracking-wider text-primary-200">Current Balance</p>
+                                <p className={`text-3xl font-extrabold mt-1 ${balance >= 0 ? "text-emerald-300" : "text-rose-300"}`}>
+                                    {balance < 0 ? "-" : ""}₹{Math.abs(balance).toLocaleString()}
+                                </p>
+                            </div>
+                        </div>
+
+                        {/* Mobile Add Entry Button */}
+                        <div className="mt-6 sm:hidden">
+                            <Button variant="secondary" onClick={() => setShowModal(true)} className="w-full bg-white text-primary-700 hover:bg-primary-50 border-transparent">
+                                <PlusCircle className="mr-2 h-4 w-4" /> Add Entry
+                            </Button>
+                        </div>
+                    </CardContent>
+                </Card>
+
+                {/* Net Summary Metrics */}
+                <Card>
+                    <CardContent className="p-6 flex flex-col justify-center h-full space-y-6">
+                        <div className="flex justify-between items-end border-b border-slate-100 pb-4">
+                            <div>
+                                <p className="text-xs font-medium text-slate-500 uppercase tracking-wider">Total Credits (+)</p>
+                                <p className="text-xl font-bold text-emerald-600 mt-1">₹{totalCredit.toLocaleString()}</p>
+                            </div>
+                            <div className="text-emerald-500 bg-emerald-50 px-2 py-1 rounded text-xs font-medium">+ Entries</div>
+                        </div>
+                        <div className="flex justify-between items-end">
+                            <div>
+                                <p className="text-xs font-medium text-slate-500 uppercase tracking-wider">Total Debits (-)</p>
+                                <p className="text-xl font-bold text-rose-600 mt-1">₹{totalDebit.toLocaleString()}</p>
+                            </div>
+                            <div className="text-rose-500 bg-rose-50 px-2 py-1 rounded text-xs font-medium">- Deductions</div>
+                        </div>
+                    </CardContent>
+                </Card>
             </div>
 
             {/* TABLE */}
-            <div className="bg-white rounded-2xl shadow-lg border overflow-x-auto">
-                <table className="min-w-full text-sm">
-                    <thead className="bg-[#E0FFF5] uppercase text-xs border-b">
-                        <tr>
-                            <th className="p-3">📅 Date</th>
-                            <th className="p-3">🔖 Type</th>
-                            <th className="p-3">📝 Note</th>
-                            <th className="p-3">💰 Amount</th>
-                            <th className="p-3 text-center">⚙ Actions</th>
-                        </tr>
-                    </thead>
+            <Card>
+                <div className="overflow-x-auto">
+                    <Table>
+                        <TableHeader>
+                            <TableRow>
+                                <TableHead>Date</TableHead>
+                                <TableHead>Type</TableHead>
+                                <TableHead>Note</TableHead>
+                                <TableHead className="text-right">Amount</TableHead>
+                                <TableHead className="text-right sticky right-0 bg-slate-50/90 backdrop-blur z-20 shadow-[-4px_0_10px_-4px_rgba(0,0,0,0.02)] border-l border-slate-100">Actions</TableHead>
+                            </TableRow>
+                        </TableHeader>
 
-                    <tbody>
-                        {filteredTxns.length > 0 ? (
-                            filteredTxns.map((txn) => (
-                                <tr
-                                    key={txn._id}
-                                    className={`border-b ${txn.type === "credit" ? "bg-green-50" : "bg-red-50"}`}
+                        <TableBody>
+                            {filteredTxns.length > 0 ? (
+                                filteredTxns.map((txn) => (
+                                    <TableRow key={txn._id} className="group">
+                                        <TableCell className="text-slate-600">
+                                            {new Date(txn.date).toLocaleDateString("en-IN", { day: '2-digit', month: 'short', year: 'numeric' })}
+                                        </TableCell>
+                                        <TableCell>
+                                            <Badge variant={txn.type === "credit" ? "success" : "danger"} className="capitalize">
+                                                {txn.type}
+                                            </Badge>
+                                        </TableCell>
+                                        <TableCell className="text-slate-700 max-w-[200px] truncate" title={txn.note}>
+                                            {txn.note || <span className="text-slate-400">—</span>}
+                                        </TableCell>
+                                        <TableCell className={`text-right font-bold ${txn.type === "credit" ? "text-emerald-600" : "text-rose-600"}`}>
+                                            {txn.type === "credit" ? "+" : "-"}₹{txn.amount.toLocaleString()}
+                                        </TableCell>
+                                        <TableCell className="text-right sticky right-0 bg-white group-hover:bg-slate-50/80 z-10 shadow-[-4px_0_10px_-4px_rgba(0,0,0,0.05)] border-l border-slate-100">
+                                            <div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                <Button
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    className="h-8 w-8 p-0 text-slate-400 hover:text-primary-600"
+                                                    onClick={() => openEditModal(txn)}
+                                                >
+                                                    <Pencil size={16} />
+                                                </Button>
+
+                                                <Button
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    className="h-8 w-8 p-0 text-slate-400 hover:text-rose-600"
+                                                    onClick={() => deleteEntry(txn._id)}
+                                                >
+                                                    <Trash2 size={16} />
+                                                </Button>
+                                            </div>
+                                        </TableCell>
+                                    </TableRow>
+                                ))
+                            ) : (
+                                <TableRow>
+                                    <TableCell colSpan="5" className="h-32 text-center text-slate-500">
+                                        {selectedMonth ? `No transactions found for ${selectedMonth}.` : "No transactions recorded yet."}
+                                    </TableCell>
+                                </TableRow>
+                            )}
+                        </TableBody>
+                    </Table>
+                </div>
+            </Card>
+
+
+            {/* ADD / EDIT ENTRY MODALS */}
+            {(showModal || editModal) && (
+                <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm flex justify-center items-center z-50 p-4">
+                    <Card className="w-full max-w-md shadow-xl animate-in zoom-in duration-200">
+                        <div className="flex justify-between items-center p-6 border-b border-slate-100">
+                            <h2 className="text-lg font-semibold text-slate-900">
+                                {editModal ? "Edit Ledger Entry" : "Add Ledger Entry"}
+                            </h2>
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-8 w-8 p-0 rounded-full"
+                                onClick={() => {
+                                    setShowModal(false);
+                                    setEditModal(false);
+                                }}
+                            >
+                                <X size={18} />
+                            </Button>
+                        </div>
+
+                        <CardContent className="p-6">
+                            <div className="space-y-4">
+                                <div>
+                                    <Label>Entry Type</Label>
+                                    <CustomSelect
+                                        value={editModal ? editEntry.type : entry.type}
+                                        onChange={(v) => editModal
+                                            ? setEditEntry({ ...editEntry, type: v })
+                                            : setEntry({ ...entry, type: v })
+                                        }
+                                    />
+                                    <p className="text-xs text-slate-500 mt-1">
+                                        Credit adds to balance (advance), Debit deducts from balance.
+                                    </p>
+                                </div>
+
+                                <div>
+                                    <Label>Amount (₹)</Label>
+                                    <Input
+                                        type="number"
+                                        placeholder="0.00"
+                                        min="0"
+                                        value={editModal ? editEntry.amount : entry.amount}
+                                        onChange={(e) => editModal
+                                            ? setEditEntry({ ...editEntry, amount: e.target.value })
+                                            : setEntry({ ...entry, amount: e.target.value })
+                                        }
+                                    />
+                                </div>
+
+                                <div>
+                                    <Label>Note / Description (Optional)</Label>
+                                    <Input
+                                        placeholder="e.g. Salary Advance, Loan Deduction..."
+                                        value={editModal ? editEntry.note : entry.note}
+                                        onChange={(e) => editModal
+                                            ? setEditEntry({ ...editEntry, note: e.target.value })
+                                            : setEntry({ ...entry, note: e.target.value })
+                                        }
+                                    />
+                                </div>
+                            </div>
+
+                            <div className="flex justify-end gap-3 pt-6 mt-6 border-t border-slate-100">
+                                <Button
+                                    variant="secondary"
+                                    onClick={() => {
+                                        setShowModal(false);
+                                        setEditModal(false);
+                                    }}
                                 >
-                                    <td className="p-3">{new Date(txn.date).toLocaleDateString("en-IN")}</td>
-                                    <td className="p-3 capitalize">{txn.type}</td>
-                                    <td className="p-3">{txn.note || "—"}</td>
-                                    <td className="p-3 font-semibold">₹{txn.amount}</td>
+                                    Cancel
+                                </Button>
 
-                                    <td className="p-3 flex justify-center gap-3">
-                                        <button
-                                            className="text-blue-600 hover:text-blue-800 transition"
-                                            onClick={() => openEditModal(txn)}
-                                        >
-                                            <Pencil size={18} />
-                                        </button>
-
-                                        <button
-                                            className="text-red-600 hover:text-red-800 transition"
-                                            onClick={() => deleteEntry(txn._id)}
-                                        >
-                                            <Trash2 size={18} />
-                                        </button>
-                                    </td>
-                                </tr>
-                            ))
-                        ) : (
-                            <tr>
-                                <td colSpan="5" className="text-center text-gray-500 py-6">
-                                    No transactions found.
-                                </td>
-                            </tr>
-                        )}
-                    </tbody>
-                </table>
-            </div>
-
-            {/* TOTALS */}
-            <div className="bg-[#F0FFFB] border border-[#00BFA6]/30 rounded-xl p-5 flex justify-between">
-                <p className="text-green-600 font-semibold">Total Credits: ₹{totalCredit}</p>
-                <p className="text-red-600 font-semibold">Total Debits: ₹{totalDebit}</p>
-                <p className="text-[#00A28E] font-bold">Net Balance: ₹{balance}</p>
-            </div>
-
-            {/* ADD ENTRY MODAL */}
-            {showModal && (
-                <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
-                    <div className="bg-white p-6 rounded-xl w-[90%] max-w-md shadow-xl">
-                        <h2 className="text-xl font-semibold mb-4">Add Ledger Entry</h2>
-
-                        <div className="space-y-3">
-                            <CustomSelect
-                                value={entry.type}
-                                onChange={(v) => setEntry({ ...entry, type: v })}
-                            />
-
-                            <input
-                                type="number"
-                                placeholder="Amount"
-                                value={entry.amount}
-                                onChange={(e) => setEntry({ ...entry, amount: e.target.value })}
-                                className="w-full border px-3 py-2 rounded-lg"
-                            />
-
-                            <textarea
-                                placeholder="Note"
-                                value={entry.note}
-                                onChange={(e) => setEntry({ ...entry, note: e.target.value })}
-                                className="w-full border px-3 py-2 rounded-lg"
-                            />
-                        </div>
-
-                        <div className="flex gap-3 mt-5">
-                            <button
-                                onClick={saveEntry}
-                                className="flex-1 bg-[#00A28E] text-white py-2 rounded-lg hover:bg-[#008f7a] transition"
-                            >
-                                Save
-                            </button>
-                            <button
-                                onClick={() => setShowModal(false)}
-                                className="flex-1 border py-2 rounded-lg hover:bg-gray-100 transition"
-                            >
-                                Cancel
-                            </button>
-                        </div>
-                    </div>
+                                <Button onClick={editModal ? updateEntry : saveEntry}>
+                                    {editModal ? "Update Entry" : "Save Entry"}
+                                </Button>
+                            </div>
+                        </CardContent>
+                    </Card>
                 </div>
             )}
-
-            {/* EDIT ENTRY MODAL */}
-            {editModal && (
-                <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
-                    <div className="bg-white p-6 rounded-xl w-[90%] max-w-md shadow-xl">
-                        <h2 className="text-xl font-semibold mb-4">Edit Entry</h2>
-
-                        <div className="space-y-3">
-                            <CustomSelect
-                                value={editEntry.type}
-                                onChange={(v) => setEditEntry({ ...editEntry, type: v })}
-                            />
-
-                            <input
-                                type="number"
-                                value={editEntry.amount}
-                                onChange={(e) => setEditEntry({ ...editEntry, amount: e.target.value })}
-                                className="w-full border px-3 py-2 rounded-lg"
-                            />
-
-                            <textarea
-                                value={editEntry.note}
-                                onChange={(e) => setEditEntry({ ...editEntry, note: e.target.value })}
-                                className="w-full border px-3 py-2 rounded-lg"
-                            />
-                        </div>
-
-                        <div className="flex gap-3 mt-5">
-                            <button
-                                onClick={updateEntry}
-                                className="flex-1 bg-[#00A28E] text-white py-2 rounded-lg hover:bg-[#008f7a] transition"
-                            >
-                                Update
-                            </button>
-
-                            <button
-                                onClick={() => setEditModal(false)}
-                                className="flex-1 border py-2 rounded-lg hover:bg-gray-100 transition"
-                            >
-                                Cancel
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
-
         </div>
     );
 }

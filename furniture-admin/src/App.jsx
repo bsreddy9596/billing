@@ -9,6 +9,7 @@ import MainLayout from "./layout/MainLayout";
 import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
 import Analytics from "./pages/Analytics";
+import { Navigate } from "react-router-dom";
 
 import Orders from "./pages/Orders";
 import OrderDetails from "./pages/OrderDetails";
@@ -72,6 +73,19 @@ export default function App() {
                 <AdminRoute>
                   <MainLayout>
                     <EmployeeList />
+                  </MainLayout>
+                </AdminRoute>
+              </PrivateRoute>
+            }
+          />
+
+          <Route
+            path="/employees/:id"
+            element={
+              <PrivateRoute>
+                <AdminRoute>
+                  <MainLayout>
+                    <EmployeeLedger />
                   </MainLayout>
                 </AdminRoute>
               </PrivateRoute>
@@ -241,6 +255,9 @@ export default function App() {
               </PrivateRoute>
             }
           />
+
+          {/* ================= CATCH ALL ================= */}
+          <Route path="*" element={<Navigate to="/" replace />} />
 
         </Routes>
       </AuthProvider>

@@ -65,12 +65,12 @@ export default function AdminLogin() {
                 {/* Logo + Title */}
                 <div className="text-center mb-6">
                     <div className="mx-auto mb-3 w-14 h-14 flex items-center justify-center 
-                        rounded-full bg-[#00bfa6]/10 text-[#00bfa6] font-bold text-2xl">
+                        rounded-full bg-primary-50 text-primary-600 font-bold text-2xl">
                         S
                     </div>
 
-                    <h1 className="text-3xl font-semibold text-gray-800 mb-1">
-                        SNGR <span className="text-[#00bfa6]">Furnitures</span>
+                    <h1 className="text-3xl font-semibold text-slate-800 mb-1">
+                        SNGR <span className="text-primary-600">Furnitures</span>
                     </h1>
 
                     <p className="text-gray-500 text-sm">Admin Portal Login</p>
@@ -85,8 +85,8 @@ export default function AdminLogin() {
                             placeholder="Enter your phone"
                             value={phone}
                             onChange={(e) => setPhone(e.target.value)}
-                            className="w-full border border-gray-200 rounded-lg p-3 
-                            focus:outline-none focus:ring-2 focus:ring-[#00bfa6] text-gray-700"
+                            className="w-full border border-slate-200 rounded-lg p-3 
+                            focus:outline-none focus:ring-2 focus:ring-primary-500 text-slate-700 bg-slate-50"
                         />
                     </div>
 
@@ -97,8 +97,8 @@ export default function AdminLogin() {
                             placeholder="Enter password"
                             value={password}
                             onChange={(e) => setPassword(e.target.value)}
-                            className="w-full border border-gray-200 rounded-lg p-3 
-                            focus:outline-none focus:ring-2 focus:ring-[#00bfa6] text-gray-700"
+                            className="w-full border border-slate-200 rounded-lg p-3 
+                            focus:outline-none focus:ring-2 focus:ring-primary-500 text-slate-700 bg-slate-50"
                         />
                     </div>
                 </div>
@@ -107,7 +107,7 @@ export default function AdminLogin() {
                 <button
                     onClick={handleLogin}
                     disabled={loading}
-                    className="mt-6 w-full bg-[#00bfa6] hover:bg-[#00a68e] text-white 
+                    className="mt-6 w-full bg-primary-600 hover:bg-primary-700 text-white 
                     font-semibold py-3 rounded-lg transition-all duration-200 shadow-md"
                 >
                     {loading ? "Logging in..." : "Login"}
@@ -116,7 +116,7 @@ export default function AdminLogin() {
                 {/* Footer */}
                 <p className="mt-6 text-center text-sm text-gray-500">
                     Forgot password?{" "}
-                    <a href="#" className="text-[#00bfa6] hover:underline font-medium">
+                    <a href="#" className="text-primary-600 hover:underline font-medium">
                         Reset here
                     </a>
                 </p>

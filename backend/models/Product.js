@@ -23,6 +23,14 @@ const productSchema = new mongoose.Schema(
       type: Number,
       required: true,
     },
+    taxPercent: {
+      type: Number,
+      default: 0,
+    },
+    unit: {
+      type: String,
+      default: "pcs",
+    },
     image: {
       type: String,
     },
