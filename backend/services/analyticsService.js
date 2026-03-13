@@ -247,6 +247,7 @@ class AnalyticsService {
         const orders = await Order.find(
             {},
             {
+                invoiceNumber: 1,
                 customerName: 1,
                 saleAmount: 1,
                 totalMaterialCost: 1,
@@ -265,8 +266,10 @@ class AnalyticsService {
                     : 0;
 
                 const profit = orderValue - (materialCost + expenses);
+                const orderId = o.invoiceNumber || (o._id ? o._id.toString().slice(-6).toUpperCase() : "N/A");
 
                 return {
+                    orderId,
                     customerName: o.customerName || "General",
                     orderValue: Math.round(orderValue),
                     materialCost: Math.round(materialCost),
